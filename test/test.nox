@@ -1,0 +1,20 @@
+// This is a comment
+
+> 0x1000
+label_start:
+
+push a #0xaa
+push b #0xbb
+
+pop a 0x0010
+pop b 0x0011
+
+loop:
+    INC HI
+    CMP hi #0x10
+    jze loop_end
+    jmp loop
+
+loop_end:
+    sto HI 0X0012
+    jmp 0x0000
