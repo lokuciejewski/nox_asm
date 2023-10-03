@@ -20,9 +20,7 @@
 // $ 0xaa 0xbb 0xcc 0xdd 0xee 0xff - denotes some bytes in memory after this symbol
 
 // NOOP
-NOOP         
-NOOP <16HEX> // will fill the space between this NOOP and <16HEX> address with NOOPS
-NOOP <label> // the same but until label
+NOOP
 
 // PUSH_A_IMMEDIATE  
 PUSH A #<8HEX>
