@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, fs::OpenOptions, io::Write};
 
 use clap::Parser;
 use nox_asm::Assembler;
@@ -23,8 +23,11 @@ fn main() {
 
     let mut assembler = Assembler::new(input_path);
 
-    assembler.assemble().unwrap();
+    let bytes = assembler.assemble().unwrap();
 
+    let mut file = OpenOptions::new().write(true).append(false).create(true).open(output_path).unwrap();
+
+    file.write_all(&bytes).unwrap();
 
     println!("> Assembling {:?}...", input_path);
     println!("> {:?} assembled to {:?}", input_path, output_path);

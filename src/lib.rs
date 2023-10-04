@@ -3,10 +3,14 @@ use std::{fs::OpenOptions, path::Path};
 
 use anyhow::anyhow;
 use anyhow::Error;
+use instructions::cmp::parse_cmp;
+use instructions::dec::parse_dec;
 use instructions::inc::parse_inc;
+use instructions::jump::{parse_jze, parse_jof, parse_jer, parse_jok, parse_jump};
 use instructions::noop::parse_noop;
 use instructions::pop::parse_pop;
 use instructions::push::parse_push;
+use instructions::zero::parse_zero;
 use opcodes::Opcode;
 
 mod opcodes;
@@ -151,7 +155,7 @@ impl<'a> Assembler<'a> {
     pub fn assemble(&mut self) -> Result<Vec<u8>, Error> {
         self.load_input()?;
         self.parse_tokens()?;
-        println!("Parsed tokens: {:?}", self.tokens);
+        println!("Parsed tokens: {:#?}", self.parsed_tokens);
         self.generate_bytes()
     }
 
@@ -172,29 +176,30 @@ impl<'a> Assembler<'a> {
             .split('\n')
             .into_iter()
             .enumerate()
-            .filter(|(_, line)| !line.is_empty())
             .map(|(line_n, line)| {
                 line.split_ascii_whitespace()
                     .into_iter()
                     .enumerate()
                     .map(|(word_n, word)| {
-                        Token::try_from(word.to_string())
+                        let token = Token::try_from(word.to_string())
                             .map_err(|e| {
                                 anyhow!(
                                     "Error: {} in line {} token {}: {}",
                                     e,
-                                    line_n,
-                                    word_n,
+                                    line_n + 1,
+                                    word_n + 1,
                                     word
                                 )
                             })
-                            .unwrap()
+                            .unwrap();
+                        println!("Parsed token: {:?}", token);
+                        token
                     })
                     .collect()
             })
             .collect();
 
-        // Second pass
+        // Second pass - assign opcodes and remove unnecessary tokens, flatten the structure
         let mut current_mem_address: u16 = 0xffff; // to compensate for the +1 on first token
         self.parsed_tokens = self
             .tokens
@@ -202,47 +207,67 @@ impl<'a> Assembler<'a> {
             .enumerate()
             .filter_map(|(line_n, line)| {
                 // First token on each line can only be Instruction, Label, Comment, DataStream or AddressDelimiter
-                let first_token = line.get(0).unwrap();
-                current_mem_address += 1;
-                match first_token._type {
-                    TokenType::Instruction => Some(Self::parse_instruction(line, &mut current_mem_address)),
-                    TokenType::Label => {
-                        let mut label = first_token.clone();
-                        label.address = Some(current_mem_address);
-                        current_mem_address -= 1; // compensate for +1 on next line
-                        Some(Ok(vec![label]))
-                    }
-                    TokenType::AddressDelimiter => {
-                        // This changes `current_mem_address`
-                        if let Some(address_token) = line.get(1) {
-                            current_mem_address = address_token.value.unwrap() as u16 - 1; // compensate for the +1 on next line
-                            None
-                        } else {
-                            Some(Err(anyhow!(
-                                "Syntax error in line {} - cannot read address after address delimiter",
-                                line_n,
-                            )))
+                if let Some(first_token) = line.get(0) {
+                    current_mem_address += 1;
+                    match first_token._type {
+                        TokenType::Instruction => Some(Self::parse_instruction(line, &mut current_mem_address)),
+                        TokenType::Label => {
+                            let mut label = first_token.clone();
+                            label.address = Some(current_mem_address);
+                            current_mem_address -= 1; // compensate for +1 on next line
+                            Some(Ok(vec![label]))
                         }
-                        
+                        TokenType::AddressDelimiter => {
+                            // This changes `current_mem_address`
+                            if let Some(address_token) = line.get(1) {
+                                current_mem_address = address_token.value.unwrap() as u16 - 1; // compensate for the +1 on next line
+                                None
+                            } else {
+                                Some(Err(anyhow!(
+                                    "Syntax error in line {} - cannot read address after address delimiter",
+                                    line_n + 1,
+                                )))
+                            }
+                            
+                        }
+                        TokenType::CommentStart => {
+                            // This line is a comment, ignore it
+                            None
+                        }
+                        TokenType::DataStream => Some(
+                            line.iter().enumerate()
+                                .map(|(idx, token)| {
+                                    let mut token_clone = token.clone();                                            
+                                    token_clone.address = Some(current_mem_address - 1 + idx as u16); // -1 because of DataStream symbol
+                                    match token._type {
+                                        TokenType::Address => {
+                                            // normal byte interpreted as address
+                                            token_clone._type = TokenType::ImmediateValue8;
+                                            token_clone.value = Some(usize::from_str_radix(&token.raw[2..], 16).map_err(|e| anyhow!(e))?);
+                                            Ok(token_clone)
+                                        },
+                                        TokenType::Text => {
+                                            token_clone.raw = token.raw.replace('"', "");
+                                            Ok(token_clone)
+                                        }
+                                        TokenType::DataStream => {
+                                            Ok(token_clone)
+                                        }
+                                        _ => {
+                                            Err(anyhow!("Syntax error in line {} - invalid token after $: {}", line_n + 1, token.raw))
+                                        }
+                                    }
+                                })
+                                .collect(),
+                        ),
+                        _ => Some(Err(anyhow!(
+                            "Syntax error in line {} - line cannot start with {}",
+                            line_n + 1,
+                            first_token.raw
+                        ))),
                     }
-                    TokenType::CommentStart => {
-                        // This line is a comment, ignore it
-                        None
-                    }
-                    TokenType::DataStream => Some(
-                        line.iter()
-                            .map(|token| {
-                                let mut token_clone = token.clone();
-                                token_clone.address = Some(current_mem_address as u16);
-                                Ok(token_clone)
-                            })
-                            .collect(),
-                    ),
-                    _ => Some(Err(anyhow!(
-                        "Syntax error in line {} - line cannot start with {}",
-                        line_n,
-                        first_token.raw
-                    ))),
+                } else {
+                    None
                 }
             }).map(|line| {
                 println!("Parsed line: {:?}", line);
@@ -250,6 +275,20 @@ impl<'a> Assembler<'a> {
             })
             .flatten()
             .collect();
+
+        // Third pass: assign values for `Text` tokens that are labels
+        let pt_clone = self.parsed_tokens.clone();
+        for token in &mut self.parsed_tokens {
+            if token._type == TokenType::Text {
+                let mut labels = pt_clone.iter().filter(|t|t._type == TokenType::Label);
+                let mut token_val = token.raw.clone();
+                token_val.push(':');
+                if let Some(label) = labels.find(|t| t.raw == token_val) {
+                    token._type = TokenType::Label;
+                    token.value = Some(label.address.unwrap() as usize);
+                }
+            }
+        }
         Ok(())
     }
 
@@ -267,16 +306,16 @@ impl<'a> Assembler<'a> {
             "OR" => todo!(),
             "XOR" => todo!(),
             "NOT" => todo!(),
-            "CMP" => todo!(),
+            "CMP" => parse_cmp(tokenised_line, current_mem_address),
             "INC" => parse_inc(tokenised_line, current_mem_address),
-            "DEC" => todo!(),
-            "ZERO" => todo!(),
+            "DEC" => parse_dec(tokenised_line, current_mem_address),
+            "ZERO" => parse_zero(tokenised_line, current_mem_address),
             "SWP" => todo!(),
-            "JZE" => todo!(),
-            "JOF" => todo!(),
-            "JER" => todo!(),
-            "JOK" => todo!(),
-            "JMP" => todo!(),
+            "JZE" => parse_jze(tokenised_line, current_mem_address),
+            "JOF" => parse_jof(tokenised_line, current_mem_address),
+            "JER" => parse_jer(tokenised_line, current_mem_address),
+            "JOK" => parse_jok(tokenised_line, current_mem_address),
+            "JMP" => parse_jump(tokenised_line, current_mem_address),
             "CALL" => todo!(),
             "RET" => todo!(),
             "SET" => todo!(),
@@ -290,6 +329,24 @@ impl<'a> Assembler<'a> {
     }
 
     fn generate_bytes(&self) -> Result<Vec<u8>, Error> {
-        todo!()
+        let mut result = vec![0; 0xffff + 1];
+        for token in &self.parsed_tokens {
+            let address = token.address.unwrap() as usize;
+            if token.opcode.is_some() {
+                let instruction_val = token.opcode.clone().unwrap() as u8;
+                println!("Writing instruction: {:02x?} (0x{:02x})", token, instruction_val);
+                result[address] = instruction_val;
+            } else if token.value.is_some() {
+                if token._type == TokenType::ImmediateValue8 {
+                    println!("Writing 8 bit data: {:02x?}", token);
+                    result[address] = (token.value.unwrap() & 0xff) as u8;
+                } else if token._type == TokenType::ImmediateValue16 || token._type == TokenType::Label || token._type == TokenType::Address{
+                    println!("Writing 16 bit data: {:04x?}", token);
+                    result[address] = ((token.value.unwrap() & 0xff00) >> 8) as u8;
+                    result[address + 1] = (token.value.unwrap() & 0xff) as u8;
+                }
+            }
+        }
+        Ok(result)
     }
 }

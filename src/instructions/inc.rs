@@ -11,13 +11,21 @@ pub(crate) fn parse_inc(
     if let Some(target_reg_token) = tokenised_line.get(1) {
         if target_reg_token._type == TokenType::Register {
             // Second token is a register
-            instruction.opcode = Some(match target_reg_token.raw.to_uppercase().as_str() {
-                "HI" => Opcode::INC_HI,
-                "LI" => Opcode::INC_LI,
-                "HLI" => Opcode::INC_HLI,
-                _ => Opcode::NOOP,
-            });
-            Ok(vec![instruction])
+            match target_reg_token.raw.to_uppercase().as_str() {
+                "HI" => {
+                    instruction.opcode = Some(Opcode::INC_HI);
+                    Ok(vec![instruction])
+                }
+                "LI" => {
+                    instruction.opcode = Some(Opcode::INC_LI);
+                    Ok(vec![instruction])
+                }
+                "HLI" => {
+                    instruction.opcode = Some(Opcode::INC_HLI);
+                    Ok(vec![instruction])
+                }
+                _ => Err(anyhow!("syntax error")),
+            }
         } else {
             Err(anyhow!("token {} is not a register", target_reg_token.raw))
         }

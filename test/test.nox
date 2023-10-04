@@ -2,19 +2,32 @@
 
 > 0x1000
 label_start:
-
 push a #0xaa
 push b #0xbb
 
-pop a 0x0010
-pop b 0x0011
+zero hli
 
 loop:
-    INC HI
-    CMP hi #0x10
+    INC HLI
+    CMP hli #0x0010
     jze loop_end
     jmp loop
 
 loop_end:
-    sto HI 0X0012
-    jmp 0x0000
+    jmp 0x1000
+
+// IRQ
+> 0xfff8 
+$ 0xff 0x00
+
+// stack address
+> 0xfffa 
+$ 0x00 0x00
+
+// stack size
+> 0xfffc 
+$ 0x01 0x00
+
+// reset 
+> 0xfffe
+$ 0x10 0x00

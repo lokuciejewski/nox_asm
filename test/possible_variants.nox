@@ -165,10 +165,10 @@ SHL A
 SHL B
 // SHIFT_LEFT_AB    // same as 8 bit shift
 SHL AB
+
+
+
 // SHIFT_RIGHT_A    // set last bit to 0
-
-
-
 SHR A
 // SHIFT_RIGHT_B
 SHR B
