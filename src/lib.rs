@@ -177,11 +177,13 @@ impl<'a> Assembler<'a> {
             .into_iter()
             .enumerate()
             .map(|(line_n, line)| {
+                let mut comment = false;
                 line.split_ascii_whitespace()
                     .into_iter()
                     .enumerate()
                     .map(|(word_n, word)| {
-                        let token = Token::try_from(word.to_string())
+                        if !comment {
+                            let token = Token::try_from(word.to_string())
                             .map_err(|e| {
                                 anyhow!(
                                     "Error: {} in line {} token {}: {}",
@@ -192,8 +194,13 @@ impl<'a> Assembler<'a> {
                                 )
                             })
                             .unwrap();
+                        comment = token._type == TokenType::CommentStart;
                         println!("Parsed token: {:?}", token);
                         token
+                        } else {
+                            Token { _type: TokenType::Text, raw: word.to_owned(), opcode: None, value: None, address: None }
+                        }
+                        
                     })
                     .collect()
             })
