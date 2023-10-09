@@ -2,7 +2,7 @@ use anyhow::{anyhow, Error};
 
 use crate::{opcodes::Opcode, Token, TokenType};
 
-pub (crate) fn parse_push(
+pub(crate) fn parse_push(
     tokenised_line: &Vec<Token>,
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
@@ -35,7 +35,13 @@ pub (crate) fn parse_push(
                                 ("AB", "SA") => Opcode::PUSH_AB_STACK_ADDRESS,
                                 ("AB", "SS") => Opcode::PUSH_AB_STACK_SIZE,
                                 ("HLI", "AB") => Opcode::PUSH_HLI_AB,
-                                _ => Opcode::NOOP,
+                                _ => {
+                                    return Err(anyhow!(
+                                        "incorrect register sequence for PUSH: {} {}",
+                                        source_reg_token.raw,
+                                        target_token.raw
+                                    ))
+                                }
                             },
                         );
                         Ok(vec![instruction])
@@ -47,7 +53,12 @@ pub (crate) fn parse_push(
                                 "B" => Opcode::PUSH_B_IMMEDIATE,
                                 "HI" => Opcode::PUSH_HI_IMMEDIATE,
                                 "LI" => Opcode::PUSH_LI_IMMEDIATE,
-                                _ => Opcode::NOOP,
+                                _ => {
+                                    return Err(anyhow!(
+                                        "incorrect register for PUSH immediate 8 bit: {}",
+                                        source_reg_token.raw,
+                                    ))
+                                }
                             });
                         let mut target = target_token.clone();
                         *current_mem_address += 1;
@@ -59,7 +70,12 @@ pub (crate) fn parse_push(
                             Some(match source_reg_token.raw.to_uppercase().as_str() {
                                 "AB" => Opcode::PUSH_AB_IMMEDIATE,
                                 "HLI" => Opcode::PUSH_HLI_IMMEDIATE,
-                                _ => Opcode::NOOP,
+                                _ => {
+                                    return Err(anyhow!(
+                                        "incorrect register for PUSH immediate 16 bit: {}",
+                                        source_reg_token.raw,
+                                    ))
+                                }
                             });
                         let mut target = target_token.clone();
                         *current_mem_address += 1;
@@ -76,7 +92,12 @@ pub (crate) fn parse_push(
                                 "LI" => Opcode::PUSH_LI_ABSOLUTE,
                                 "AB" => Opcode::PUSH_AB_ABSOLUTE,
                                 "HLI" => Opcode::PUSH_HLI_ABSOLUTE,
-                                _ => Opcode::NOOP,
+                                _ => {
+                                    return Err(anyhow!(
+                                        "incorrect register for PUSH absolute: {}",
+                                        source_reg_token.raw,
+                                    ))
+                                }
                             });
                         let mut target = target_token.clone();
                         *current_mem_address += 1;

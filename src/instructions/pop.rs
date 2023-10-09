@@ -32,7 +32,13 @@ pub(crate) fn parse_pop(
                                 ("AB", "SS") => Opcode::POP_AB_STACK_SIZE,
                                 ("AB", "IRA") => Opcode::POP_AB_IRQ,
                                 ("AB", "HLI") => Opcode::POP_AB_HLI,
-                                _ => Opcode::NOOP,
+                                _ => {
+                                    return Err(anyhow!(
+                                        "incorrect register sequence for POP: {} {}",
+                                        source_reg_token.raw,
+                                        target_token.raw
+                                    ))
+                                }
                             },
                         );
                         Ok(vec![instruction])
@@ -43,7 +49,12 @@ pub(crate) fn parse_pop(
                                 "A" => Opcode::POP_A_ABSOLUTE,
                                 "B" => Opcode::POP_B_ABSOLUTE,
                                 "AB" => Opcode::POP_AB_ABSOLUTE,
-                                _ => Opcode::NOOP,
+                                _ => {
+                                    return Err(anyhow!(
+                                        "incorrect register for POP absolute: {}",
+                                        source_reg_token.raw,
+                                    ))
+                                }
                             });
                         let mut target = target_token.clone();
                         *current_mem_address += 1;

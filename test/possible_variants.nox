@@ -277,6 +277,7 @@ ZERO HLI
 
 // SWAP_HI_LI // no flags set
 SWP HI LI
+SWP LI HI // the same, just different syntax
 
 
 

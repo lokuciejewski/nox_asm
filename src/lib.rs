@@ -3,6 +3,7 @@ use std::{fs::OpenOptions, path::Path};
 
 use anyhow::anyhow;
 use anyhow::Error;
+use instructions::add::parse_add;
 use instructions::cmp::parse_cmp;
 use instructions::dec::parse_dec;
 use instructions::inc::parse_inc;
@@ -10,6 +11,10 @@ use instructions::jump::{parse_jze, parse_jof, parse_jer, parse_jok, parse_jump}
 use instructions::noop::parse_noop;
 use instructions::pop::parse_pop;
 use instructions::push::parse_push;
+use instructions::shift::parse_shift;
+use instructions::store::parse_sto;
+use instructions::sub::parse_sub;
+use instructions::swap::parse_swap;
 use instructions::zero::parse_zero;
 use opcodes::Opcode;
 
@@ -304,11 +309,11 @@ impl<'a> Assembler<'a> {
             "NOOP" => parse_noop(tokenised_line, current_mem_address),
             "PUSH" => parse_push(tokenised_line, current_mem_address),
             "POP" => parse_pop(tokenised_line, current_mem_address),
-            "STO" => todo!(),
-            "ADD" => todo!(),
-            "SUB" => todo!(),
-            "SHL" => todo!(),
-            "SHR" => todo!(),
+            "STO" => parse_sto(tokenised_line, current_mem_address),
+            "ADD" => parse_add(tokenised_line, current_mem_address),
+            "SUB" => parse_sub(tokenised_line, current_mem_address),
+            "SHL" => parse_shift(tokenised_line, current_mem_address, instructions::shift::Direction::Left),
+            "SHR" => parse_shift(tokenised_line, current_mem_address, instructions::shift::Direction::Right),
             "AND" => todo!(),
             "OR" => todo!(),
             "XOR" => todo!(),
@@ -317,7 +322,7 @@ impl<'a> Assembler<'a> {
             "INC" => parse_inc(tokenised_line, current_mem_address),
             "DEC" => parse_dec(tokenised_line, current_mem_address),
             "ZERO" => parse_zero(tokenised_line, current_mem_address),
-            "SWP" => todo!(),
+            "SWP" => parse_swap(tokenised_line, current_mem_address),
             "JZE" => parse_jze(tokenised_line, current_mem_address),
             "JOF" => parse_jof(tokenised_line, current_mem_address),
             "JER" => parse_jer(tokenised_line, current_mem_address),

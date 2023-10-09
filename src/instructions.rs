@@ -14,6 +14,7 @@ pub (crate) mod return_;
 pub (crate) mod set;
 pub (crate) mod shift;
 pub (crate) mod store;
+pub (crate) mod swap;
 pub (crate) mod sub;
 pub (crate) mod xor;
 pub (crate) mod zero;
