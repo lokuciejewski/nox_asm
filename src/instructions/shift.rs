@@ -25,7 +25,6 @@ pub(crate) fn parse_shift(
                     } else {
                         Opcode::SHIFT_RIGHT_A
                     });
-                    Ok(vec![instruction])
                 }
                 "B" => {
                     instruction.opcode = Some(if shift_direction == Direction::Left {
@@ -33,7 +32,6 @@ pub(crate) fn parse_shift(
                     } else {
                         Opcode::SHIFT_RIGHT_B
                     });
-                    Ok(vec![instruction])
                 }
                 "AB" => {
                     instruction.opcode = Some(if shift_direction == Direction::Left {
@@ -41,10 +39,10 @@ pub(crate) fn parse_shift(
                     } else {
                         Opcode::SHIFT_RIGHT_AB
                     });
-                    Ok(vec![instruction])
                 }
-                _ => Err(anyhow!("syntax error")),
+                _ => return Err(anyhow!("syntax error")),
             }
+            Ok(vec![instruction])
         } else {
             Err(anyhow!("token {} is not a register", target_reg_token.raw))
         }
