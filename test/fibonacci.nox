@@ -15,48 +15,42 @@
 
 > 0x1000
 start:
-    PUSH A  #0x01
-    PUSH B  #0x01
-    PUSH LI #0x00
+    PUSH 0x01 A 
+    PUSH 0x01 B
+    ZERO LI
 fibo_loop:
-    CMP LI #0x01
+    CMP 0x01 LI
     JZE b_loop
     INC LI
     ADD A B
-    PEEK A 0xe000
+    PEEK A output
     JOF end
     JMP fibo_loop
 b_loop:
     DEC LI
     ADD B A
-    PEEK B 0xe000
+    PEEK B output
     JOF end
     JMP fibo_loop
-
-
 end: 
     HALT
 
-> 0x1500
-temp:
-$ 0x00 0x00
-
 > 0xe000
 output:
-$ 0x00 0x00
+$ 0x0000
 
 // IRQ
 > 0xfff8 
-$ 0xff 0x00
+$ 0xff00
 
 // stack address
 > 0xfffa 
-$ 0x00 0x00
+$ 0x0000
 
 // stack size
 > 0xfffc 
-$ 0x01 0x00
+$ 0x0100
 
 // reset 
 > 0xfffe
-$ 0x10 0x00
+$ 0x1000

@@ -81,7 +81,7 @@ impl TryFrom<String> for Token {
                 })
             }
             immediate if immediate.starts_with("0X") => {
-                let parsed_val = usize::from_str_radix(&immediate[3..], 16).map_err(|e| anyhow!(e))?;
+                let parsed_val = usize::from_str_radix(&immediate[2..], 16).map_err(|e| anyhow!(e))?;
                 let token_type = if immediate.len() > 5 {
                     TokenType::ImmediateValue16
                 } else {
@@ -264,10 +264,14 @@ impl<'a> Assembler<'a> {
                                     let mut token_clone = token.clone();                                            
                                     token_clone.address = Some(current_mem_address - 1 + idx as u16); // -1 because of DataStream symbol
                                     match token._type {
-                                        TokenType::Address => {
-                                            // normal byte interpreted as address
+                                        TokenType::ImmediateValue8 => {
                                             token_clone._type = TokenType::ImmediateValue8;
-                                            token_clone.value = Some(usize::from_str_radix(&token.raw[2..], 16).map_err(|e| anyhow!(e))?);
+                                            token_clone.value = token.value;
+                                            Ok(token_clone)
+                                        },
+                                        TokenType::ImmediateValue16 => {
+                                            token_clone._type = TokenType::ImmediateValue16;
+                                            token_clone.value = token.value;
                                             Ok(token_clone)
                                         },
                                         TokenType::Text => {
