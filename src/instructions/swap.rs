@@ -17,8 +17,8 @@ pub(crate) fn parse_swap(
                     TokenType::Register => {
                         instruction.opcode = Some(
                             match (
-                                target_token.raw.to_uppercase().as_str(),
-                                source_reg_token.raw.to_uppercase().as_str(),
+                                target_token.formatted_raw().as_str(),
+                                source_reg_token.formatted_raw().as_str(),
                             ) {
                                 ("HI", "LI") | ("LI", "HI") => Opcode::SWAP_HI_LI,
                                 _ => return Err(anyhow!("SWP only works for HI and LI")),

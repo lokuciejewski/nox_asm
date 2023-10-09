@@ -1,7 +1,7 @@
 use std::io::Read;
 use std::{fs::OpenOptions, path::Path};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use anyhow::Error;
 use instructions::add::parse_add;
 use instructions::and::parse_and;
@@ -15,12 +15,13 @@ use instructions::jump::{parse_jze, parse_jof, parse_jer, parse_jok, parse_jump}
 use instructions::noop::parse_noop;
 use instructions::not::parse_not;
 use instructions::or::parse_or;
+use instructions::peek::parse_peek;
 use instructions::pop::parse_pop;
 use instructions::push::parse_push;
 use instructions::return_::parse_return;
 use instructions::set::parse_set;
 use instructions::shift::parse_shift;
-use instructions::store::parse_sto;
+use instructions::store::parse_store;
 use instructions::sub::parse_sub;
 use instructions::swap::parse_swap;
 use instructions::xor::parse_xor;
@@ -37,7 +38,8 @@ enum TokenType {
     Flag,             // any of ERR, IRQ, OK, OVF, ZERO
     ImmediateValue8,   // any token starting with `#0x` and parsing into 1 byte value
     ImmediateValue16,   // any token starting with `#0x` and parsing into 2 byte value
-    Address,          // any 2 byte token starting with `0x`
+    Indirection,      // `&HLI`
+    Address,          // any 2 byte token starting with `&0x`
     Label,            // any text ending with ":"
     Text,             // any token that does not match the rest
     AddressDelimiter, // `>`
@@ -46,12 +48,24 @@ enum TokenType {
 }
 
 #[derive(Debug, Clone)]
-struct Token {
+struct Token{
     _type: TokenType,
     raw: String,
     opcode: Option<Opcode>,
     value: Option<usize>, // since the value can be either u8 or u16
     address: Option<u16>,
+}
+
+impl Token {
+    pub fn formatted_raw(&self) -> String {
+        self.raw.trim().to_uppercase()
+    }
+}
+
+impl Default for Token{
+    fn default() -> Self {
+        Self { _type: TokenType::Text, raw: Default::default(), opcode: Default::default(), value: Default::default(), address: Default::default() }
+    }
 }
 
 impl TryFrom<String> for Token {
@@ -63,14 +77,12 @@ impl TryFrom<String> for Token {
                 Ok(Token {
                     _type: TokenType::Register,
                     raw: value,
-                    opcode: None,
-                    value: None,
-                    address: None,
+                    ..Default::default()
                 })
             }
-            im if im.starts_with("#0X") => {
-                let parsed_val = usize::from_str_radix(&im[3..], 16).map_err(|e| anyhow!(e))?;
-                let token_type = if im.len() > 5 {
+            immediate if immediate.starts_with("0X") => {
+                let parsed_val = usize::from_str_radix(&immediate[3..], 16).map_err(|e| anyhow!(e))?;
+                let token_type = if immediate.len() > 5 {
                     TokenType::ImmediateValue16
                 } else {
                     TokenType::ImmediateValue8
@@ -79,71 +91,62 @@ impl TryFrom<String> for Token {
                 Ok(Token {
                     _type: token_type,
                     raw: value,
-                    opcode: None,
                     value: Some(parsed_val),
-                    address: None,
+                    ..Default::default()
                 })
             }
-            addr if addr.starts_with("0X") => {
-                let parsed_val = usize::from_str_radix(&addr[2..], 16).map_err(|e| anyhow!(e))?;
+            indirection if indirection == "&HLI" => {
+                Ok(Token {
+                    _type: TokenType::Indirection,
+                    raw: value,
+                    ..Default::default()
+                })
+            }
+            address if address.starts_with("&") => {
+                let parsed_val = usize::from_str_radix(&address[3..], 16).map_err(|e| anyhow!(e))?;
                 Ok(Token {
                     _type: TokenType::Address,
                     raw: value,
-                    opcode: None,
                     value: Some(parsed_val),
-                    address: None,
+                    ..Default::default()
                 })
             }
             "$" => Ok(Token {
                 _type: TokenType::DataStream,
                 raw: value,
-                opcode: None,
-                value: None,
-                address: None,
+                ..Default::default()
             }),
             ">" => Ok(Token {
                 _type: TokenType::AddressDelimiter,
                 raw: value,
-                opcode: None,
-                value: None,
-                address: None,
+                ..Default::default()
             }),
             "//" => Ok(Token {
                 _type: TokenType::CommentStart,
                 raw: value,
-                opcode: None,
-                value: None,
-                address: None,
+                ..Default::default()
             }),
             "ERR" | "IRQ" | "OK" | "OVF" | "ZER" => Ok(Token {
                 _type: TokenType::Flag,
                 raw: value,
-                opcode: None,
-                value: None,
-                address: None,
+                ..Default::default()
             }),
-            "NOOP" | "PUSH" | "POP" | "STO" | "ADD" | "SUB" | "SHL" | "SHR" | "AND" | "OR"
+            "NOOP" | "PUSH" | "POP" | "PEEK" | "STO" | "ADD" | "SUB" | "SHL" | "SHR" | "AND" | "OR"
             | "XOR" | "NOT" | "CMP" | "INC" | "DEC" | "ZERO" | "SWP" | "JZE" | "JOF" | "JER"
             | "JOK" | "JMP" | "CALL" | "RET" | "SET" | "CLR" | "HALT" => Ok(Token {
                 _type: TokenType::Instruction,
                 raw: value,
-                opcode: None,
-                value: None,
-                address: None,
+                ..Default::default()
             }),
             label if label.ends_with(':') => Ok(Token {
                 _type: TokenType::Label,
                 raw: value,
-                opcode: None,
-                value: None,
-                address: None,
+                ..Default::default()
             }),
             _ => Ok(Token {
                 _type: TokenType::Text,
                 raw: value,
-                opcode: None,
-                value: None,
-                address: None,
+                ..Default::default()
             }),
         }
     }
@@ -230,7 +233,7 @@ impl<'a> Assembler<'a> {
                 if let Some(first_token) = line.get(0) {
                     current_mem_address += 1;
                     match first_token._type {
-                        TokenType::Instruction => Some(Self::parse_instruction(line, &mut current_mem_address)),
+                        TokenType::Instruction => Some(Self::parse_instruction(line, &mut current_mem_address).context(anyhow!("error in line {}", line_n + 1))),
                         TokenType::Label => {
                             let mut label = first_token.clone();
                             label.address = Some(current_mem_address);
@@ -252,6 +255,7 @@ impl<'a> Assembler<'a> {
                         }
                         TokenType::CommentStart => {
                             // This line is a comment, ignore it
+                            current_mem_address -= 1; // compensate for +1 on next line
                             None
                         }
                         TokenType::DataStream => Some(
@@ -313,11 +317,12 @@ impl<'a> Assembler<'a> {
     }
 
     fn parse_instruction(tokenised_line: &Vec<Token>, current_mem_address: &mut u16) -> Result<Vec<Token>, Error> {
-        match tokenised_line.get(0).unwrap().raw.to_uppercase().as_str() {
+        match tokenised_line.get(0).unwrap().formatted_raw().as_str() {
             "NOOP" => parse_noop(tokenised_line, current_mem_address),
             "PUSH" => parse_push(tokenised_line, current_mem_address),
             "POP" => parse_pop(tokenised_line, current_mem_address),
-            "STO" => parse_sto(tokenised_line, current_mem_address),
+            "PEEK" => parse_peek(tokenised_line, current_mem_address),
+            "STO" => parse_store(tokenised_line, current_mem_address),
             "ADD" => parse_add(tokenised_line, current_mem_address),
             "SUB" => parse_sub(tokenised_line, current_mem_address),
             "SHL" => parse_shift(tokenised_line, current_mem_address, instructions::shift::Direction::Left),

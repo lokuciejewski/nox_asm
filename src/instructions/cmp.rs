@@ -6,107 +6,76 @@ pub(crate) fn parse_cmp(
     tokenised_line: &Vec<Token>,
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
-    // CMP <REG> #<8HEX> | CMP <REG> #<16HEX> | CMP <REG> <REG> | CMP <REG> <16HEX>
-    let mut instruction = tokenised_line.get(0).unwrap().clone();
-    instruction.address = Some(*current_mem_address);
-    if let Some(source_reg_token) = tokenised_line.get(1) {
-        if let Some(target_token) = tokenised_line.get(2) {
-            match (&source_reg_token._type, &target_token._type) {
-                (TokenType::Register, TokenType::Register) => {
-                    if source_reg_token.raw.to_uppercase() == "A"
-                        && target_token.raw.to_uppercase() == "B"
-                    {
-                        instruction.opcode = Some(Opcode::CMP_A_B);
-                        Ok(vec![instruction])
-                    } else {
-                        Err(anyhow!("CMP may only be used as `CMP A B`"))
-                    }
+    let mut tokens = tokenised_line
+        .get(0..=2)
+        .ok_or_else(|| anyhow!("too few tokens in line for PUSH"))?
+        .to_owned();
+
+    match tokens.as_mut_slice() {
+        [instruction, token_1, token_2] => {
+            let mut instruction = instruction.clone();
+            instruction.address = Some(*current_mem_address);
+            match (&instruction._type, &token_1._type, &token_2._type) {
+                (TokenType::Instruction, TokenType::Register, TokenType::Register) => {
+                    instruction.opcode = Some(
+                        match (
+                            token_1.formatted_raw().as_str(),
+                            token_2.formatted_raw().as_str(),
+                        ) {
+                            ("A", "B") => Opcode::CMP_A_B,
+                            _ => return Err(anyhow!("CMP may only be used as `CMP A B`")),
+                        },
+                    );
+                    Ok(vec![instruction])
                 }
-                (TokenType::Register, TokenType::ImmediateValue8) => {
-                    match source_reg_token.raw.to_uppercase().as_str() {
-                        "A" => {
-                            instruction.opcode = Some(Opcode::CMP_A_IMMEDIATE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            Ok(vec![instruction, target_val])
-                        }
-                        "B" => {
-                            instruction.opcode = Some(Opcode::CMP_B_IMMEDIATE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            Ok(vec![instruction, target_val])
-                        }
-                        "HI" => {
-                            instruction.opcode = Some(Opcode::CMP_HI_IMMEDIATE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            Ok(vec![instruction, target_val])
-                        }
-                        "LI" => {
-                            instruction.opcode = Some(Opcode::CMP_LI_IMMEDIATE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            Ok(vec![instruction, target_val])
-                        }
-                        _ => Err(anyhow!("syntax error")),
-                    }
+                (TokenType::Instruction, TokenType::ImmediateValue8, TokenType::Register) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "A" => Opcode::CMP_IMMEDIATE_A,
+                        "B" => Opcode::CMP_IMMEDIATE_B,
+                        "HI" => Opcode::CMP_IMMEDIATE_HI,
+                        "LI" => Opcode::CMP_IMMEDIATE_LI,
+                        reg => return Err(anyhow!("invalid register for 8 bit CMP: {}", reg)),
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    Ok(vec![instruction, target])
                 }
-                (TokenType::Register, TokenType::ImmediateValue16) => {
-                    match source_reg_token.raw.to_uppercase().as_str() {
-                        "AB" => {
-                            instruction.opcode = Some(Opcode::CMP_AB_IMMEDIATE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            *current_mem_address += 1;
-                            Ok(vec![instruction, target_val])
-                        }
-                        "HLI" => {
-                            instruction.opcode = Some(Opcode::CMP_HLI_IMMEDIATE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            *current_mem_address += 1;
-                            Ok(vec![instruction, target_val])
-                        }
-                        _ => Err(anyhow!("syntax error")),
-                    }
+                (TokenType::Instruction, TokenType::ImmediateValue16, TokenType::Register) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "AB" => Opcode::CMP_IMMEDIATE_AB,
+                        "HLI" => Opcode::CMP_IMMEDIATE_HLI,
+                        reg => return Err(anyhow!("invalid register for 16 bit CMP: {}", reg)),
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    *current_mem_address += 1;
+                    Ok(vec![instruction, target])
                 }
-                (TokenType::Register, TokenType::Address) => {
-                    match source_reg_token.raw.to_uppercase().as_str() {
-                        "AB" => {
-                            instruction.opcode = Some(Opcode::CMP_AB_ABSOLUTE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            *current_mem_address += 1;
-                            Ok(vec![instruction, target_val])
-                        }
-                        "HLI" => {
-                            instruction.opcode = Some(Opcode::CMP_HLI_ABSOLUTE);
-                            let mut target_val = target_token.clone();
-                            *current_mem_address += 1;
-                            target_val.address = Some(*current_mem_address);
-                            *current_mem_address += 1;
-                            Ok(vec![instruction, target_val])
-                        }
-                        _ => Err(anyhow!("syntax error")),
-                    }
+                (
+                    TokenType::Instruction,
+                    TokenType::Address | TokenType::Text | TokenType::Label,
+                    TokenType::Register,
+                ) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "A" => Opcode::CMP_ABSOLUTE_A,
+                        "B" => Opcode::CMP_ABSOLUTE_B,
+                        "HI" => Opcode::CMP_ABSOLUTE_HI,
+                        "LI" => Opcode::CMP_ABSOLUTE_LI,
+                        "AB" => Opcode::CMP_ABSOLUTE_AB,
+                        "HLI" => Opcode::CMP_ABSOLUTE_HLI,
+                        reg => return Err(anyhow!("invalid register for CMP absolute: {}", reg)),
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    *current_mem_address += 1;
+                    Ok(vec![instruction, target])
                 }
-                (_, _) => Err(anyhow!(
-                    "invalid token in CMP instruction: {}/{}",
-                    source_reg_token.raw,
-                    target_token.raw
-                )),
+                _ => return Err(anyhow!("syntax error")),
             }
-        } else {
-            Err(anyhow!("syntax error"))
         }
-    } else {
-        Err(anyhow!("syntax error"))
+        _ => todo!(),
     }
 }

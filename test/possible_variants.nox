@@ -1,7 +1,17 @@
-// <HEX> is always preceeded by `0x`, eg. 0xdead, 0x2133
+// This file is meant to be parsed fully by the assembler. It serves as the initial test if all syntax is implemented properly. 
+// That's why there are some values used as examples:
+// - all 8-bit hexes are replaced with 0xff
+// - all 16-bit hexes are replaced with &0x1234
+//
+// `label` represents any label that has been declared in a file
+//
+// all values should be hexadecimal and preceeded by `0x`, eg. 0xdead, 0x2133, 0xab
 // <8HEX> = 8-bit hex
 // <16HEX> = 16-bit hex
-
+//
+// &<16HEX> denotes an address and is always interchangeable with `label`
+// &HLI denotes indirect addressing, eg. PUSH &HLI A pushes value at address in HLI into A
+//
 // `//` - double slash is comment
 // `<any_text>:` denotes a label in this place
 // `> 0x1500` will place any following code starting from 0x1500
@@ -18,20 +28,22 @@
 // text:
 // $ "THIS IS A TEXT" - denotes a zero-terminated ascii string accessible by using label "text"
 // $ 0xaa 0xbb 0xcc 0xdd 0xee 0xff - denotes some bytes in memory after this symbol
-
+// 
 // NOOP
 NOOP
 
-// PUSH_A_IMMEDIATE  
-PUSH A #<8HEX>
-// PUSH_A_ABSOLUTE   
-PUSH A <16HEX>  
+// PUSH_IMMEDIATE_A  
+PUSH 0xff A
+// PUSH_ABSOLUTE_A  
+PUSH &0x1234 A  
+PUSH label A 
 // PUSH_A_B
 PUSH A B
-// PUSH_B_IMMEDIATE    
-PUSH B #<8HEX>
-// PUSH_B_ABSOLUTE  
-PUSH B 16HEX
+// PUSH_IMMEDIATE_B    
+PUSH 0xff B
+// PUSH_ABSOLUTE_B 
+PUSH &0x1234 B
+PUSH label B
 // PUSH_B_A
 PUSH B A
 // PUSH_HI_A
@@ -46,28 +58,32 @@ PUSH LI B
 PUSH EX A
 // PUSH_EXIT_CODE_B
 PUSH EX B
-// PUSH_HI_IMMEDIATE
-PUSH HI #<8HEX>
-// PUSH_HI_ABSOLUTE
-PUSH HI <16HEX>
-// PUSH_LI_IMMEDIATE
-PUSH LI #<8HEX>
-// PUSH_LI_ABSOLUTE
-PUSH LI <16HEX>
-// PUSH_AB_IMMEDIATE
-PUSH AB #<16HEX>
-// PUSH_AB_ABSOLUTE
-PUSH AB <16HEX>
+// PUSH_IMMEDIATE_HI
+PUSH 0xff HI
+// PUSH_ABSOLUTE_HI
+PUSH &0x1234 HI
+PUSH label HI
+// PUSH_IMMEDIATE_LI
+PUSH 0xff LI
+// PUSH_ABSOLUTE_LI
+PUSH &0x1234 LI
+PUSH label LI
+// PUSH_IMMEDIATE_AB
+PUSH 0x1234 AB
+// PUSH_ABSOLUTE_AB
+PUSH &0x1234 AB
+PUSH label AB
 // PUSH_HLI_AB
 PUSH HLI AB
-// PUSH_HLI_IMMEDIATE
-PUSH HLI #<16HEX>
-// PUSH_HLI_ABSOLUTE
-PUSH HLI <16HEX>
-// PUSH_AB_STACK_ADDRESS  // Push `stack_address` to AB, set ZERO flag accordingly
-PUSH AB SA
-// PUSH_AB_STACK_SIZE     // Push `stack_size` to AB, set ZERO flag accordingly
-PUSH AB SS
+// PUSH_IMMEDIATE_HLI
+PUSH 0x1234 HLI
+// PUSH_ABSOLUTE_HLI
+PUSH &0x1234 HLI
+PUSH label HLI
+// PUSH_STACK_ADDRESS_AB  // Push `stack_address` to AB, set ZERO flag accordingly
+PUSH SA AB
+// PUSH_STACK_SIZE_AB     // Push `stack_size` to AB, set ZERO flag accordingly
+PUSH SS AB
 // PUSH_A_STACK           // push value(s) from A to stack IMMEDIATE value times
 PUSH A S
 // PUSH_B_STACK           // push value(s) from B to stack IMMEDIATE value times
@@ -76,17 +92,25 @@ PUSH B S
 PUSH HI S
 // PUSH_LI_STACK          // push LI to stack
 PUSH LI S
+// PUSH_INDIRECT_A
+PUSH &HLI A 
+// PUSH_INDIRECT_B
+PUSH &HLI B 
+// PUSH_INDIRECT_AB
+PUSH &HLI AB 
 
 
 
 // POP_A_ABSOLUTE  
-POP A <16HEX>
+POP A &0x1234
+POP A label
 // POP_A_HI
 POP A HI
 // POP_A_LI   
 POP A LI
 // POP_B_ABSOLUTE  
-POP B <16HEX>
+POP B &0x1234
+POP B label
 // POP_B_HI
 POP B HI
 // POP_B_LI
@@ -106,56 +130,90 @@ POP HI S
 // POP_LI_STACK           // pop LI from stack
 POP LI S
 // POP_AB_ABSOLUTE
-POP AB <16HEX>
+POP AB &0x1234
+POP AB label
 // POP_AB_HLI
 POP AB HLI
+// POP_A_INDIRECT
+POP A &HLI
+// POP_B_INDIRECT
+POP B &HLI
+// POP_AB_INDIRECT
+POP AB &HLI
+
+
+
+// PEEK_A_ABSOLUTE
+PEEK A &0x1234
+PEEK A label
+// PEEK_B_ABSOLUTE
+PEEK B &0x1234
+PEEK B label
+// PEEK_AB_ABSOLUTE
+PEEK AB &0x1234
+PEEK AB label
+// PEEK_A_INDIRECT
+PEEK A &HLI
+// PEEK_B_INDIRECT
+PEEK B &HLI
+// PEEK_AB_INDIRECT
+PEEK AB &HLI
 
 
 
 // STORE_HI_ABSOLUTE
-STO HI <16HEX>
+STO HI &0x1234
+STO HI label
 // STORE_LI_ABSOLUTE
-STO LI <16HEX>
+STO LI &0x1234
+STO LI label
 // STORE_HLI_ABSOLUTE
-STO HLI <16HEX>
-
+STO HLI &0x1234
+STO HLI label
 
 
 // ADD_A_B            // A + B -> push to B
 ADD A B
-// ADD_A_IMMEDIATE    // A + IM -> push to A
-ADD A #<8HEX>
-// ADD_A_ABSOLUTE
-ADD A <16HEX>
+// ADD_IMMEDIATE_A    // A + IM -> push to A
+ADD 0xff A
+// ADD_ABSOLUTE_A
+ADD &0x1234 A
+ADD label A
 // ADD_B_A            // A + B -> push to A
 ADD B A
-// ADD_B_IMMEDIATE    // B + IM -> push to B
-ADD B #<8HEX>
-// ADD_B_ABSOLUTE
-ADD B <16HEX>
-// ADD_AB_IMMEDIATE
-ADD AB #<16HEX>
-// ADD_AB_ABSOLUTE
-ADD AB <16HEX>
+// ADD_IMMEDIATE_B    // B + IM -> push to B
+ADD 0xff B
+// ADD_ABSOLUTE_B
+ADD &0x1234 B
+ADD label B
+// ADD_IMMEDIATE_AB
+ADD 0x1234 AB
+ADD label AB 
+// ADD_ABSOLUTE_AB
+ADD &0x1234 AB 
+ADD label AB 
 
 
 
 // SUB_A_B            // A - B -> push to B
 SUB A B
-// SUB_A_IMMEDIATE    // A - IM -> push to A
-SUB A #<8HEX>
-// SUB_A_ABSOLUTE
-SUB A <16HEX>
+// SUB_IMMEDIATE_A    // A - IM -> push to A
+SUB 0xff A
+// SUB_ABSOLUTE_A
+SUB &0x1234 A
+SUB label A
 // SUB_B_A            // B - A -> push to A
 SUB B A
-// SUB_B_IMMEDIATE    // B - IM -> push to B
-SUB B #<8HEX>
-// SUB_B_ABSOLUTE
-SUB B <16HEX>
-// SUB_AB_IMMEDIATE
-SUB AB #<16HEX>
-// SUB_AB_ABSOLUTE
-SUB AB <16HEX>
+// SUB_IMMEDIATE_B   // B - IM -> push to B
+SUB 0xff B
+// SUB_ABSOLUTE_B
+SUB &0x1234 B
+SUB label B
+// SUB_IMMEDIATE_AB
+SUB 0x1234 AB
+// SUB_ABSOLUTE_AB
+SUB &0x1234 AB
+SUB label AB
 
 
 
@@ -181,10 +239,11 @@ SHR AB
 AND A B
 // AND_B_A    // A and B -> push to B
 AND B A
-// AND_AB_IMMEDIATE   // same as 8 bit ops
-AND AB #<16HEX>
-// AND_AB_ABSOLUTE
-AND AB <16HEX>
+// AND_IMMEDIATE_AB   // same as 8 bit ops
+AND 0x1234 AB
+// AND_ABSOLUTE_AB
+AND &0x1234 AB
+AND label AB
 
 
 
@@ -192,21 +251,22 @@ AND AB <16HEX>
 OR A B
 // OR_B_A     // A or B -> push to B
 OR B A
-// OR_AB_IMMEDIATE
-OR AB #<16HEX>
-// OR_AB_ABSOLUTE
-OR AB <16HEX>
+// OR_IMMEDIATE_AB
+OR 0x1234 AB
+// OR_ABSOLUTE_AB
+OR &0x1234 AB
+OR label AB
 
 
-
-// XOR_A_B    // A xor B -> push to A
+// XOR_A_B     // A xor B -> push to A
 XOR A B
-// XOR_B_A    // A xor B -> push to B
+// OR_B_A     // A xor B -> push to B
 XOR B A
-// XOR_AB_IMMEDIATE
-XOR AB #<16HEX>
-// XOR_AB_ABSOLUTE
-XOR AB <16HEX>
+// XOR_IMMEDIATE_AB
+XOR 0x1234 AB
+// OR_ABSOLUTE_AB
+XOR &0x1234 AB
+XOR label AB
 
 
 
@@ -221,30 +281,36 @@ NOT AB
 
 // CMP_A_B            // compare A and B: set ZERO if equal, set OVF if A > B, clear ZERO and OVF if A < B
 CMP A B
-// CMP_A_IMMEDIATE    // flags set same as above
-CMP A #<8HEX>
-// CMP_A_ABSOLUTE
-CMP A <16HEX>
-// CMP_B_IMMEDIATE
-CMP B #<8HEX>
-// CMP_B_ABSOLUTE
-CMP B <16HEX>
-// CMP_HI_IMMEDIATE   // same as CMP_A_B
-CMP HI #<8HEX>
-// CMP_HI_ABSOLUTE
-CMP HI <16HEX>
-// CMP_LI_IMMEDIATE
-CMP LI #<8HEX>
-// CMP_LI_ABSOLUTE
-CMP LI <16HEX>
-// CMP_AB_IMMEDIATE
-CMP AB #<16HEX>
-// CMP_AB_ABSOLUTE
-CMP AB <16HEX>
-// CMP_HLI_IMMEDIATE
-CMP HLI #<16HEX>
-// CMP_HLI_ABSOLUTE
-CMP HLI <16HEX>
+// CMP_IMMEDIATE_A    // flags set same as above
+CMP 0xff A
+// CMP_ABSOLUTE_A
+CMP &0x1234 A
+CMP label A
+// CMP_IMMEDIATE_B
+CMP 0xff B
+// CMP_ABSOLUTE_B
+CMP &0x1234 B
+CMP label B
+// CMP_IMMEDIATE_HI
+CMP 0xff HI
+// CMP_ABSOLUTE_HI
+CMP &0x1234 HI
+CMP label HI
+// CMP_IMMEDIATE_LI
+CMP 0xff LI
+// CMP_ABSOLUTE_LI
+CMP &0x1234 LI
+CMP label LI
+// CMP_IMMEDIATE_AB
+CMP 0x1234 AB
+// CMP_ABSOLUTE_AB
+CMP &0x1234 AB
+CMP label AB
+// CMP_IMMEDIATE_HLI
+CMP 0x1234 HLI
+// CMP_ABSOLUTE_HLI
+CMP &0x1234 HLI
+CMP label HLI
 
 
 
@@ -282,49 +348,49 @@ SWP LI HI // the same, just different syntax
 
 
 // JUMP_IF_ZERO
-JZE <16HEX>
-JZE <label>
+JZE &0x1234
+JZE label
 
 
 
 // JUMP_IF_OVERFLOW
-JOF <16HEX>
-JOF <label>
+JOF &0x1234
+JOF label
 
 
 
 // JUMP_IF_ERROR
-JER <16HEX>
-JER <label>
+JER &0x1234
+JER label
 
 
 
 // JUMP_IF_OK
-JOK <16HEX>
-JOK <label>
+JOK &0x1234
+JOK label
 
 
 
 // JUMP
-JMP <16HEX>
-JMP <label>
+JMP &0x1234
+JMP label
 
 
 
 // CALL                   // push flags, index registers and current PC to stack and jump to specified address 
-CALL <16HEX>
-CALL <label>
+CALL &0x1234
+CALL label
 
 
 
 // RETURN_OK              // pop flags, set the OK flag (do not pop ERR/OK flags) and set EXIT_CODE to 0, pop index registers and PC from stack and resume from PC
 RET OK
 // RETURN_OK_EXIT_CODE    // same as above but set EXIT_CODE to IMMEDIATE value
-RET OK #<8HEX>
+RET OK 0xff
 // RETURN_ERR             // pop flags, set the ERR flag (do not pop ERR/OK flags) and set EXIT_CODE to 0, pop index registers and PC from stack and resume from PC 
 RET ERR
 // RETURN_ERR_EXIT_CODE   // same as above but set EXIT_CODE to IMMEDIATE value
-RET ERR #<8HEX>
+RET ERR 0xff
 
 
 

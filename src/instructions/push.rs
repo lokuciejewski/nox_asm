@@ -6,117 +6,117 @@ pub(crate) fn parse_push(
     tokenised_line: &Vec<Token>,
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
-    // PUSH <REG> #<8HEX> | PUSH <REG> #<16HEX> | PUSH <REG> <REG> | PUSH <REG> <16HEX>
-    let mut instruction = tokenised_line.get(0).unwrap().clone();
-    instruction.address = Some(*current_mem_address);
-    if let Some(source_reg_token) = tokenised_line.get(1) {
-        if source_reg_token._type == TokenType::Register {
-            // Second token is a register
-            if let Some(target_token) = tokenised_line.get(2) {
-                match target_token._type {
-                    TokenType::Register => {
-                        instruction.opcode = Some(
-                            match (
-                                target_token.raw.to_uppercase().as_str(),
-                                source_reg_token.raw.to_uppercase().as_str(),
-                            ) {
-                                ("A", "B") => Opcode::PUSH_A_B,
-                                ("A", "S") => Opcode::PUSH_A_STACK,
-                                ("B", "A") => Opcode::PUSH_B_A,
-                                ("B", "S") => Opcode::PUSH_B_STACK,
-                                ("HI", "A") => Opcode::PUSH_HI_A,
-                                ("HI", "B") => Opcode::PUSH_HI_B,
-                                ("HI", "S") => Opcode::PUSH_HI_STACK,
-                                ("LI", "A") => Opcode::PUSH_LI_A,
-                                ("LI", "B") => Opcode::PUSH_LI_B,
-                                ("LI", "S") => Opcode::PUSH_LI_STACK,
-                                ("EX", "A") => Opcode::PUSH_EXIT_CODE_A,
-                                ("EX", "B") => Opcode::PUSH_EXIT_CODE_A,
-                                ("AB", "SA") => Opcode::PUSH_AB_STACK_ADDRESS,
-                                ("AB", "SS") => Opcode::PUSH_AB_STACK_SIZE,
-                                ("HLI", "AB") => Opcode::PUSH_HLI_AB,
-                                _ => {
-                                    return Err(anyhow!(
-                                        "incorrect register sequence for PUSH: {} {}",
-                                        source_reg_token.raw,
-                                        target_token.raw
-                                    ))
-                                }
-                            },
-                        );
-                        Ok(vec![instruction])
-                    }
-                    TokenType::ImmediateValue8 => {
-                        instruction.opcode =
-                            Some(match source_reg_token.raw.to_uppercase().as_str() {
-                                "A" => Opcode::PUSH_A_IMMEDIATE,
-                                "B" => Opcode::PUSH_B_IMMEDIATE,
-                                "HI" => Opcode::PUSH_HI_IMMEDIATE,
-                                "LI" => Opcode::PUSH_LI_IMMEDIATE,
-                                _ => {
-                                    return Err(anyhow!(
-                                        "incorrect register for PUSH immediate 8 bit: {}",
-                                        source_reg_token.raw,
-                                    ))
-                                }
-                            });
-                        let mut target = target_token.clone();
-                        *current_mem_address += 1;
-                        target.address = Some(*current_mem_address);
-                        Ok(vec![instruction, target])
-                    }
-                    TokenType::ImmediateValue16 => {
-                        instruction.opcode =
-                            Some(match source_reg_token.raw.to_uppercase().as_str() {
-                                "AB" => Opcode::PUSH_AB_IMMEDIATE,
-                                "HLI" => Opcode::PUSH_HLI_IMMEDIATE,
-                                _ => {
-                                    return Err(anyhow!(
-                                        "incorrect register for PUSH immediate 16 bit: {}",
-                                        source_reg_token.raw,
-                                    ))
-                                }
-                            });
-                        let mut target = target_token.clone();
-                        *current_mem_address += 1;
-                        target.address = Some(*current_mem_address);
-                        *current_mem_address += 1; // 2 byte value
-                        Ok(vec![instruction, target])
-                    }
-                    TokenType::Address => {
-                        instruction.opcode =
-                            Some(match source_reg_token.raw.to_uppercase().as_str() {
-                                "A" => Opcode::PUSH_A_ABSOLUTE,
-                                "B" => Opcode::PUSH_B_ABSOLUTE,
-                                "HI" => Opcode::PUSH_HI_ABSOLUTE,
-                                "LI" => Opcode::PUSH_LI_ABSOLUTE,
-                                "AB" => Opcode::PUSH_AB_ABSOLUTE,
-                                "HLI" => Opcode::PUSH_HLI_ABSOLUTE,
-                                _ => {
-                                    return Err(anyhow!(
-                                        "incorrect register for PUSH absolute: {}",
-                                        source_reg_token.raw,
-                                    ))
-                                }
-                            });
-                        let mut target = target_token.clone();
-                        *current_mem_address += 1;
-                        target.address = Some(*current_mem_address);
-                        *current_mem_address += 1; // 2 byte value
-                        Ok(vec![instruction, target])
-                    }
-                    _ => Err(anyhow!(
-                        "token {} is not a register/address/immediate value",
-                        target_token.raw
-                    )),
+    let mut tokens = tokenised_line
+        .get(0..=2)
+        .ok_or_else(|| anyhow!("too few tokens in line for PUSH"))?
+        .to_owned();
+
+    match tokens.as_mut_slice() {
+        [instruction, token_1, token_2] => {
+            let mut instruction = instruction.clone();
+            instruction.address = Some(*current_mem_address);
+            match (&instruction._type, &token_1._type, &token_2._type) {
+                (TokenType::Instruction, TokenType::ImmediateValue8, TokenType::Register) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "A" => Opcode::PUSH_IMMEDIATE_A,
+                        "B" => Opcode::PUSH_IMMEDIATE_B,
+                        "HI" => Opcode::PUSH_IMMEDIATE_HI,
+                        "LI" => Opcode::PUSH_IMMEDIATE_LI,
+                        _ => {
+                            return Err(anyhow!(
+                                "incorrect register for PUSH immediate 8 bit: {}",
+                                token_2.raw,
+                            ))
+                        }
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    Ok(vec![instruction, target])
                 }
-            } else {
-                Err(anyhow!("syntax error"))
+                (TokenType::Instruction, TokenType::ImmediateValue16, TokenType::Register) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "AB" => Opcode::PUSH_IMMEDIATE_AB,
+                        "HLI" => Opcode::PUSH_IMMEDIATE_HLI,
+                        _ => {
+                            return Err(anyhow!(
+                                "incorrect register for PUSH immediate 16 bit: {}",
+                                token_1.raw,
+                            ))
+                        }
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    *current_mem_address += 1; // 2 byte value
+                    Ok(vec![instruction, target])
+                }
+                (
+                    TokenType::Instruction,
+                    TokenType::Address | TokenType::Text | TokenType::Label,
+                    TokenType::Register,
+                ) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "A" => Opcode::PUSH_ABSOLUTE_A,
+                        "B" => Opcode::PUSH_ABSOLUTE_B,
+                        "HI" => Opcode::PUSH_ABSOLUTE_HI,
+                        "LI" => Opcode::PUSH_ABSOLUTE_LI,
+                        "AB" => Opcode::PUSH_ABSOLUTE_AB,
+                        "HLI" => Opcode::PUSH_ABSOLUTE_HLI,
+                        _ => {
+                            return Err(anyhow!(
+                                "incorrect register for PUSH absolute: {}",
+                                token_2.raw,
+                            ))
+                        }
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    *current_mem_address += 1; // 2 byte value
+                    Ok(vec![instruction, target])
+                }
+                (TokenType::Instruction, TokenType::Indirection, TokenType::Register) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "A" => Opcode::PUSH_INDIRECT_A,
+                        "B" => Opcode::PUSH_INDIRECT_B,
+                        "AB" => Opcode::PUSH_INDIRECT_AB,
+                        _ => return Err(anyhow!("indirect PUSH can only be used with A, B or AB")),
+                    });
+                    Ok(vec![instruction])
+                }
+                (TokenType::Instruction, TokenType::Register, TokenType::Register) => {
+                    instruction.opcode = Some(
+                        match (token_1.formatted_raw().as_str(), token_2.formatted_raw().as_str()) {
+                            ("A", "B") => Opcode::PUSH_A_B,
+                            ("A", "S") => Opcode::PUSH_A_STACK,
+                            ("B", "A") => Opcode::PUSH_B_A,
+                            ("B", "S") => Opcode::PUSH_B_STACK,
+                            ("HI", "A") => Opcode::PUSH_HI_A,
+                            ("HI", "B") => Opcode::PUSH_HI_B,
+                            ("HI", "S") => Opcode::PUSH_HI_STACK,
+                            ("LI", "A") => Opcode::PUSH_LI_A,
+                            ("LI", "B") => Opcode::PUSH_LI_B,
+                            ("LI", "S") => Opcode::PUSH_LI_STACK,
+                            ("EX", "A") => Opcode::PUSH_EXIT_CODE_A,
+                            ("EX", "B") => Opcode::PUSH_EXIT_CODE_A,
+                            ("SA", "AB") => Opcode::PUSH_AB_STACK_ADDRESS,
+                            ("SS", "AB") => Opcode::PUSH_AB_STACK_SIZE,
+                            ("HLI", "AB") => Opcode::PUSH_HLI_AB,
+                            _ => {
+                                return Err(anyhow!(
+                                    "incorrect register sequence for PUSH: {} {}",
+                                    token_1.raw,
+                                    token_2.raw
+                                ))
+                            }
+                        },
+                    );
+                    Ok(vec![instruction])
+                }
+                _ => return Err(anyhow!("syntax error")),
             }
-        } else {
-            Err(anyhow!("token {} is not a register", source_reg_token.raw))
         }
-    } else {
-        Err(anyhow!("syntax error"))
+        _ => todo!(),
     }
 }

@@ -1,0 +1,62 @@
+// Calculate Fibonacci sequence and write values to dummy output buffer (address 0xe000)
+// 8 bit version
+// load A and B with 1
+// POP A temp
+// PUSH A temp
+// ADD A B
+// if OVF: number needs 16 bits
+//      HALT
+// else:
+//      OR B A // to keep the numbers
+//      POP A output
+//      OR A B
+//      jump to ADD
+
+
+> 0x1000
+start:
+    PUSH A  #0x01
+    PUSH B  #0x01
+    PUSH LI #0x00
+fibo_loop:
+    CMP LI #0x01
+    JZE b_loop
+    INC LI
+    ADD A B
+    PEEK A 0xe000
+    JOF end
+    JMP fibo_loop
+b_loop:
+    DEC LI
+    ADD B A
+    PEEK B 0xe000
+    JOF end
+    JMP fibo_loop
+
+
+end: 
+    HALT
+
+> 0x1500
+temp:
+$ 0x00 0x00
+
+> 0xe000
+output:
+$ 0x00 0x00
+
+// IRQ
+> 0xfff8 
+$ 0xff 0x00
+
+// stack address
+> 0xfffa 
+$ 0x00 0x00
+
+// stack size
+> 0xfffc 
+$ 0x01 0x00
+
+// reset 
+> 0xfffe
+$ 0x10 0x00

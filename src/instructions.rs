@@ -10,6 +10,7 @@ pub(crate) mod jump;
 pub(crate) mod noop;
 pub(crate) mod not;
 pub(crate) mod or;
+pub(crate) mod peek;
 pub(crate) mod pop;
 pub(crate) mod push;
 pub(crate) mod return_;

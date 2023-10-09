@@ -18,7 +18,7 @@ pub(crate) fn parse_shift(
     if let Some(target_reg_token) = tokenised_line.get(1) {
         if target_reg_token._type == TokenType::Register {
             // Second token must be a register
-            match target_reg_token.raw.to_uppercase().as_str() {
+            match target_reg_token.formatted_raw().as_str() {
                 "A" => {
                     instruction.opcode = Some(if shift_direction == Direction::Left {
                         Opcode::SHIFT_LEFT_A

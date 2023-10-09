@@ -10,7 +10,7 @@ pub(crate) fn parse_set(
     instruction.address = Some(*current_mem_address);
     if let Some(target_flag_token) = tokenised_line.get(1) {
         if target_flag_token._type == TokenType::Flag {
-            instruction.opcode = Some(match target_flag_token.raw.to_uppercase().as_str() {
+            instruction.opcode = Some(match target_flag_token.formatted_raw().as_str() {
                 "ERR" => Opcode::SET_ERR,
                 "IRQ" => Opcode::SET_IRQ,
                 _ => {

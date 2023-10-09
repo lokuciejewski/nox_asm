@@ -11,7 +11,7 @@ pub(crate) fn parse_inc(
     if let Some(target_reg_token) = tokenised_line.get(1) {
         if target_reg_token._type == TokenType::Register {
             // Second token is a register
-            match target_reg_token.raw.to_uppercase().as_str() {
+            match target_reg_token.formatted_raw().as_str() {
                 "HI" => {
                     instruction.opcode = Some(Opcode::INC_HI);
                     Ok(vec![instruction])

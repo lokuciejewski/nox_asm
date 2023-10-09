@@ -6,66 +6,74 @@ pub(crate) fn parse_xor(
     tokenised_line: &Vec<Token>,
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
-    let mut instruction = tokenised_line.get(0).unwrap().clone();
-    instruction.address = Some(*current_mem_address);
-    if let Some(source_reg_token) = tokenised_line.get(1) {
-        if source_reg_token._type == TokenType::Register {
-            // Second token is a register
-            match source_reg_token.raw.to_uppercase().as_str() {
-                "A" | "B" => {
-                    if let Some(target_reg_token) = tokenised_line.get(2) {
-                        if target_reg_token._type == TokenType::Register {
-                            match (
-                                source_reg_token.raw.to_uppercase().as_str(),
-                                target_reg_token.raw.to_uppercase().as_str(),
-                            ) {
-                                ("A", "B") => {
-                                    instruction.opcode = Some(Opcode::XOR_A_B);
-                                    Ok(vec![instruction])
-                                }
-                                ("B", "A") => {
-                                    instruction.opcode = Some(Opcode::XOR_B_A);
-                                    Ok(vec![instruction])
-                                }
-                                _ => {
-                                    return Err(anyhow!(
-                                        "AND can only be used on A and B registers"
-                                    ))
-                                }
-                            }
-                        } else {
-                            Err(anyhow!("token {} is not a register", target_reg_token.raw))
+    let mut tokens = tokenised_line
+        .get(0..=2)
+        .ok_or_else(|| anyhow!("too few tokens in line for PUSH"))?
+        .to_owned();
+
+    match tokens.as_mut_slice() {
+        [instruction, token_1, token_2] => {
+            let mut instruction = instruction.clone();
+            instruction.address = Some(*current_mem_address);
+            match (&instruction._type, &token_1._type, &token_2._type) {
+                (
+                    TokenType::Instruction,
+                    TokenType::Address | TokenType::Text | TokenType::Label,
+                    TokenType::Register,
+                ) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "AB" => Opcode::XOR_ABSOLUTE_AB,
+                        _ => {
+                            return Err(anyhow!(
+                                "incorrect register for AND absolute: {}",
+                                token_2.raw,
+                            ))
                         }
-                    } else {
-                        Err(anyhow!("syntax error"))
-                    }
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    *current_mem_address += 1; // 2 byte value
+                    Ok(vec![instruction, target])
                 }
-                "AB" => {
-                    if let Some(target_reg_token) = tokenised_line.get(2) {
-                        instruction.opcode = Some(match target_reg_token._type {
-                            TokenType::Address => Opcode::XOR_AB_ABSOLUTE,
-                            TokenType::ImmediateValue16 => Opcode::XOR_AB_IMMEDIATE,
+                (TokenType::Instruction, TokenType::ImmediateValue16, TokenType::Register) => {
+                    instruction.opcode = Some(match token_2.formatted_raw().as_str() {
+                        "AB" => Opcode::XOR_IMMEDIATE_AB,
+                        _ => {
+                            return Err(anyhow!(
+                                "incorrect register for AND absolute: {}",
+                                token_2.raw,
+                            ))
+                        }
+                    });
+                    let mut target = token_1.clone();
+                    *current_mem_address += 1;
+                    target.address = Some(*current_mem_address);
+                    *current_mem_address += 1; // 2 byte value
+                    Ok(vec![instruction, target])
+                }
+                (TokenType::Instruction, TokenType::Register, TokenType::Register) => {
+                    instruction.opcode = Some(
+                        match (
+                            token_1.formatted_raw().as_str(),
+                            token_2.formatted_raw().as_str(),
+                        ) {
+                            ("A", "B") => Opcode::XOR_A_B,
+                            ("B", "A") => Opcode::XOR_B_A,
                             _ => {
                                 return Err(anyhow!(
-                                "AND AB can only be used with address or immediate 16 bit value"
-                            ))
+                                    "incorrect register sequence for AND: {} {}",
+                                    token_1.raw,
+                                    token_2.raw
+                                ))
                             }
-                        });
-                        let mut target = target_reg_token.clone();
-                        *current_mem_address += 1;
-                        target.address = Some(*current_mem_address);
-                        *current_mem_address += 1; // 2 byte value
-                        Ok(vec![instruction, target])
-                    } else {
-                        Err(anyhow!("syntax error"))
-                    }
+                        },
+                    );
+                    Ok(vec![instruction])
                 }
-                _ => Err(anyhow!("syntax error")),
+                _ => return Err(anyhow!("syntax error")),
             }
-        } else {
-            Err(anyhow!("token {} is not a register", source_reg_token.raw))
         }
-    } else {
-        Err(anyhow!("syntax error"))
+        _ => todo!(),
     }
 }

@@ -10,18 +10,19 @@ pub(crate) fn parse_clear(
     instruction.address = Some(*current_mem_address);
     if let Some(target_flag_token) = tokenised_line.get(1) {
         if target_flag_token._type == TokenType::Flag {
-            instruction.opcode = Some(match target_flag_token.raw.to_uppercase().as_str() {
-                "EX" => Opcode::CLEAR_EXIT_CODE,
+            instruction.opcode = Some(match target_flag_token.formatted_raw().as_str() {
                 "ERR" => Opcode::CLEAR_ERR,
                 "IRQ" => Opcode::CLEAR_IRQ,
                 "OVF" => Opcode::CLEAR_OVF,
                 "ZER" => Opcode::CLEAR_ZERO,
-                _ => {
-                    return Err(anyhow!(
-                        "{} is not a valid flag for SET",
-                        target_flag_token.raw
-                    ))
-                }
+                _ => return Err(anyhow!("{} is not valid for SET", target_flag_token.raw)),
+            });
+            Ok(vec![instruction])
+        } else if target_flag_token._type == TokenType::Register {
+            instruction.opcode = Some(if let "EX" = target_flag_token.formatted_raw().as_str() {
+                Opcode::CLEAR_EXIT_CODE
+            } else {
+                return Err(anyhow!("{} is not valid for SET", target_flag_token.raw));
             });
             Ok(vec![instruction])
         } else {

@@ -10,7 +10,7 @@ pub(crate) fn parse_return(
     instruction.address = Some(*current_mem_address);
     if let Some(target_flag_token) = tokenised_line.get(1) {
         if target_flag_token._type == TokenType::Flag {
-            match target_flag_token.raw.to_uppercase().as_str() {
+            match target_flag_token.formatted_raw().as_str() {
                 "OK" => {
                     if let Some(exit_code_token) = tokenised_line.get(2) {
                         // RET OK #<8BIT>
