@@ -236,14 +236,14 @@ impl<'a> Assembler<'a> {
                         TokenType::Instruction => Some(Self::parse_instruction(line, &mut current_mem_address).context(anyhow!("error in line {}", line_n + 1))),
                         TokenType::Label => {
                             let mut label = first_token.clone();
+                            current_mem_address -= 1; // compensate for label token
                             label.address = Some(current_mem_address);
-                            current_mem_address -= 1; // compensate for +1 on next line
                             Some(Ok(vec![label]))
                         }
                         TokenType::AddressDelimiter => {
                             // This changes `current_mem_address`
                             if let Some(address_token) = line.get(1) {
-                                current_mem_address = address_token.value.unwrap() as u16 - 1; // compensate for the +1 on next line
+                                current_mem_address = address_token.value.unwrap() as u16;
                                 None
                             } else {
                                 Some(Err(anyhow!(
@@ -258,12 +258,19 @@ impl<'a> Assembler<'a> {
                             current_mem_address -= 1; // compensate for +1 on next line
                             None
                         }
-                        TokenType::DataStream => Some(
-                            line.iter().enumerate()
+                        TokenType::DataStream => {
+                            current_mem_address -= 1; // compensate for the DataStream token
+                            Some(
+                            line.iter().skip(1).enumerate()
                                 .map(|(idx, token)| {
                                     let mut token_clone = token.clone();                                            
-                                    token_clone.address = Some(current_mem_address - 1 + idx as u16); // -1 because of DataStream symbol
+                                    token_clone.address = Some(current_mem_address + idx as u16);
                                     match token._type {
+                                        TokenType::Text => {
+                                            // TODO: parse string 
+                                            token_clone.raw = token.raw.replace('"', "");
+                                            Ok(token_clone)
+                                        },
                                         TokenType::ImmediateValue8 => {
                                             token_clone._type = TokenType::ImmediateValue8;
                                             token_clone.value = token.value;
@@ -274,20 +281,14 @@ impl<'a> Assembler<'a> {
                                             token_clone.value = token.value;
                                             Ok(token_clone)
                                         },
-                                        TokenType::Text => {
-                                            token_clone.raw = token.raw.replace('"', "");
-                                            Ok(token_clone)
-                                        }
-                                        TokenType::DataStream => {
-                                            Ok(token_clone)
-                                        }
                                         _ => {
                                             Err(anyhow!("Syntax error in line {} - invalid token after $: {}", line_n + 1, token.raw))
                                         }
                                     }
                                 })
                                 .collect(),
-                        ),
+                        )
+                    },
                         _ => Some(Err(anyhow!(
                             "Syntax error in line {} - line cannot start with {}",
                             line_n + 1,

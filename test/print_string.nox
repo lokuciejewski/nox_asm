@@ -1,0 +1,38 @@
+
+> 0x1000
+start:
+    push 0xa000 HLI
+print_loop:
+    push &HLI A
+    jze end
+    inc HLI
+    pop A output
+    jmp print_loop
+
+end:
+    halt
+
+
+> 0xa000
+text:
+$ 0x68 0x65 0x6c 0x6c 0x6f 0x00
+
+> 0xe000
+output:
+$ 0x0000
+
+// IRQ
+> 0xfff8 
+$ 0xff00
+
+// stack address
+> 0xfffa 
+$ 0x0000
+
+// stack size
+> 0xfffc 
+$ 0x0100
+
+// reset 
+> 0xfffe
+$ 0x1000

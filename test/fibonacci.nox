@@ -1,17 +1,5 @@
 // Calculate Fibonacci sequence and write values to dummy output buffer (address 0xe000)
 // 8 bit version
-// load A and B with 1
-// POP A temp
-// PUSH A temp
-// ADD A B
-// if OVF: number needs 16 bits
-//      HALT
-// else:
-//      OR B A // to keep the numbers
-//      POP A output
-//      OR A B
-//      jump to ADD
-
 
 > 0x1000
 start:
