@@ -6,6 +6,7 @@ use anyhow::Error;
 use instructions::add::parse_add;
 use instructions::and::parse_and;
 use instructions::call::parse_call;
+use instructions::clear::parse_clear;
 use instructions::cmp::parse_cmp;
 use instructions::dec::parse_dec;
 use instructions::halt::parse_halt;
@@ -16,6 +17,8 @@ use instructions::not::parse_not;
 use instructions::or::parse_or;
 use instructions::pop::parse_pop;
 use instructions::push::parse_push;
+use instructions::return_::parse_return;
+use instructions::set::parse_set;
 use instructions::shift::parse_shift;
 use instructions::store::parse_sto;
 use instructions::sub::parse_sub;
@@ -334,9 +337,9 @@ impl<'a> Assembler<'a> {
             "JOK" => parse_jok(tokenised_line, current_mem_address),
             "JMP" => parse_jump(tokenised_line, current_mem_address),
             "CALL" => parse_call(tokenised_line, current_mem_address),
-            "RET" => todo!(),
-            "SET" => todo!(),
-            "CLR" => todo!(),
+            "RET" => parse_return(tokenised_line, current_mem_address),
+            "SET" => parse_set(tokenised_line, current_mem_address),
+            "CLR" => parse_clear(tokenised_line, current_mem_address),
             "HALT" => parse_halt(tokenised_line, current_mem_address),
             val => Err(anyhow!(
                 "{} parsed as a instruction despite not being one!",
