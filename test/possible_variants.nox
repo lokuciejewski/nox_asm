@@ -313,6 +313,7 @@ JMP <label>
 
 // CALL                   // push flags, index registers and current PC to stack and jump to specified address 
 CALL <16HEX>
+CALL <label>
 
 
 

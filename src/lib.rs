@@ -5,8 +5,10 @@ use anyhow::anyhow;
 use anyhow::Error;
 use instructions::add::parse_add;
 use instructions::and::parse_and;
+use instructions::call::parse_call;
 use instructions::cmp::parse_cmp;
 use instructions::dec::parse_dec;
+use instructions::halt::parse_halt;
 use instructions::inc::parse_inc;
 use instructions::jump::{parse_jze, parse_jof, parse_jer, parse_jok, parse_jump};
 use instructions::noop::parse_noop;
@@ -164,7 +166,6 @@ impl<'a> Assembler<'a> {
     pub fn assemble(&mut self) -> Result<Vec<u8>, Error> {
         self.load_input()?;
         self.parse_tokens()?;
-        println!("Parsed tokens: {:#?}", self.parsed_tokens);
         self.generate_bytes()
     }
 
@@ -332,11 +333,11 @@ impl<'a> Assembler<'a> {
             "JER" => parse_jer(tokenised_line, current_mem_address),
             "JOK" => parse_jok(tokenised_line, current_mem_address),
             "JMP" => parse_jump(tokenised_line, current_mem_address),
-            "CALL" => todo!(),
+            "CALL" => parse_call(tokenised_line, current_mem_address),
             "RET" => todo!(),
             "SET" => todo!(),
             "CLR" => todo!(),
-            "HALT" => todo!(),
+            "HALT" => parse_halt(tokenised_line, current_mem_address),
             val => Err(anyhow!(
                 "{} parsed as a instruction despite not being one!",
                 val
