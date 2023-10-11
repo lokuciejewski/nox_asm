@@ -267,33 +267,54 @@ impl<'a> Assembler<'a> {
                         }
                         TokenType::DataStream => {
                             current_mem_address -= 1; // compensate for the DataStream token
-                            Some(
-                            line.iter().skip(1).enumerate()
-                                .map(|(idx, token)| {
-                                    let mut token_clone = token.clone();                                            
-                                    token_clone.address = Some(current_mem_address + idx as u16);
-                                    match token._type {
-                                        TokenType::Text => {
-                                            token_clone.raw = token.raw.replace('"', "");
-                                            Ok(token_clone)
-                                        },
-                                        TokenType::ImmediateValue8 => {
-                                            token_clone._type = TokenType::ImmediateValue8;
-                                            token_clone.value = token.value;
-                                            Ok(token_clone)
-                                        },
-                                        TokenType::ImmediateValue16 => {
-                                            token_clone._type = TokenType::ImmediateValue16;
-                                            token_clone.value = token.value;
-                                            Ok(token_clone)
-                                        },
-                                        _ => {
-                                            Err(anyhow!("Syntax error in line {} - invalid token after $: {}", line_n + 1, token.raw))
+                            let mut parsed_data_stream = vec![];
+                            let mut started_text = false;
+                            for token in line.iter().skip(1) {
+                                let mut token_clone = token.clone();  
+                                match token._type {
+                                    TokenType::Text => {
+                                        started_text = token_clone.raw.starts_with('\"') & !started_text & !token_clone.raw.ends_with('\"');
+                                        token_clone.raw = token.raw.replace('\"', "");
+                                        for char in token_clone.raw.chars() {
+                                            let char_token = Token {
+                                                _type: TokenType::ImmediateValue8,
+                                                raw: char.to_string(),
+                                                value: Some(char as u8 as usize),
+                                                address: Some(current_mem_address),
+                                                opcode: None
+                                            };
+                                            current_mem_address += 1;
+                                            parsed_data_stream.push(char_token);
                                         }
+                                        if started_text {
+                                            parsed_data_stream.push(Token {
+                                                _type: TokenType::ImmediateValue8,
+                                                raw: " ".to_string(),
+                                                value: Some(' ' as u8 as usize),
+                                                address: Some(current_mem_address),
+                                                opcode: None 
+                                            });
+                                        }
+                                    },
+                                    TokenType::ImmediateValue8 => {
+                                        token_clone.address = Some(current_mem_address as u16);
+                                        token_clone._type = TokenType::ImmediateValue8;
+                                        token_clone.value = token.value;
+                                        parsed_data_stream.push(token_clone);
+                                    },
+                                    TokenType::ImmediateValue16 => {
+                                        token_clone.address = Some(current_mem_address as u16);
+                                        token_clone._type = TokenType::ImmediateValue16;
+                                        token_clone.value = token.value;
+                                        parsed_data_stream.push(token_clone);
+                                    },
+                                    _ => {
+                                        return Some(Err(anyhow!("Syntax error in line {} - invalid token after $: {}", line_n + 1, token.raw)))
                                     }
-                                })
-                                .collect(),
-                        )
+                                }
+                                current_mem_address += 1;
+                            }
+                            Some(Ok(parsed_data_stream))
                     },
                         _ => Some(Err(anyhow!(
                             "Syntax error in line {} - line cannot start with {}",
