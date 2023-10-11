@@ -95,6 +95,13 @@ impl TryFrom<String> for Token {
                     ..Default::default()
                 })
             }
+            label_value if label_value.starts_with('*') => {
+                Ok(Token {
+                    _type: TokenType::ImmediateValue16,
+                    raw: value,
+                    ..Default::default()
+                })
+            }
             indirection if indirection == "&HLI" => {
                 Ok(Token {
                     _type: TokenType::Indirection,
@@ -267,7 +274,6 @@ impl<'a> Assembler<'a> {
                                     token_clone.address = Some(current_mem_address + idx as u16);
                                     match token._type {
                                         TokenType::Text => {
-                                            // TODO: parse string 
                                             token_clone.raw = token.raw.replace('"', "");
                                             Ok(token_clone)
                                         },
@@ -305,18 +311,33 @@ impl<'a> Assembler<'a> {
             .flatten()
             .collect();
 
-        // Third pass: assign values for `Text` tokens that are labels
+        // Third pass: assign values for `Text` or `ImmediateValue16` tokens that are labels
         let pt_clone = self.parsed_tokens.clone();
         for token in &mut self.parsed_tokens {
-            if token._type == TokenType::Text {
-                let mut labels = pt_clone.iter().filter(|t|t._type == TokenType::Label);
-                let mut token_val = token.raw.clone();
-                token_val.push(':');
-                if let Some(label) = labels.find(|t| t.raw == token_val) {
-                    token._type = TokenType::Label;
-                    token.value = Some(label.address.unwrap() as usize);
-                }
-            }
+            match token._type {
+                TokenType::Text => {
+                    let mut labels = pt_clone.iter().filter(|t|t._type == TokenType::Label);
+                    let mut token_val = token.raw.clone();
+                    token_val.push(':');
+                    if let Some(label) = labels.find(|t| t.raw == token_val) {
+                            token._type = TokenType::Label;
+                            token.value = Some(label.address.unwrap() as usize);
+                    }
+                },
+                TokenType::ImmediateValue16 => {
+                    let mut labels = pt_clone.iter().filter(|t|t._type == TokenType::Label);
+                    let mut token_val = token.raw.clone();
+                    token_val.push(':');
+                    if let Some(label_name) = token_val.strip_prefix('*') {
+                        if let Some(label) = labels.find(|t| t.raw == label_name) {
+                            token._type = TokenType::Label;
+                            token.value = Some(label.address.unwrap() as usize);
+                        }
+                    }
+                    
+                },
+                _ => ()
+         }
         }
         Ok(())
     }

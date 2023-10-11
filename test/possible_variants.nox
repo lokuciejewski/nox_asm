@@ -9,6 +9,7 @@
 // <8HEX> = 8-bit hex
 // <16HEX> = 16-bit hex
 //
+// *<label> denotes the memory address at which the <label> was declared
 // &<16HEX> denotes an address and is always interchangeable with `label`
 // &HLI denotes indirect addressing, eg. PUSH &HLI A pushes value at address in HLI into A
 //
@@ -70,6 +71,7 @@ PUSH &0x1234 LI
 PUSH label LI
 // PUSH_IMMEDIATE_AB
 PUSH 0x1234 AB
+PUSH *label AB
 // PUSH_ABSOLUTE_AB
 PUSH &0x1234 AB
 PUSH label AB
@@ -77,6 +79,7 @@ PUSH label AB
 PUSH HLI AB
 // PUSH_IMMEDIATE_HLI
 PUSH 0x1234 HLI
+PUSH *label HLI
 // PUSH_ABSOLUTE_HLI
 PUSH &0x1234 HLI
 PUSH label HLI
@@ -188,7 +191,7 @@ ADD &0x1234 B
 ADD label B
 // ADD_IMMEDIATE_AB
 ADD 0x1234 AB
-ADD label AB 
+ADD *label AB 
 // ADD_ABSOLUTE_AB
 ADD &0x1234 AB 
 ADD label AB 
@@ -211,6 +214,7 @@ SUB &0x1234 B
 SUB label B
 // SUB_IMMEDIATE_AB
 SUB 0x1234 AB
+SUB *label AB
 // SUB_ABSOLUTE_AB
 SUB &0x1234 AB
 SUB label AB
@@ -241,6 +245,7 @@ AND A B
 AND B A
 // AND_IMMEDIATE_AB   // same as 8 bit ops
 AND 0x1234 AB
+AND *label AB
 // AND_ABSOLUTE_AB
 AND &0x1234 AB
 AND label AB
@@ -253,6 +258,7 @@ OR A B
 OR B A
 // OR_IMMEDIATE_AB
 OR 0x1234 AB
+OR *label AB
 // OR_ABSOLUTE_AB
 OR &0x1234 AB
 OR label AB
@@ -264,6 +270,7 @@ XOR A B
 XOR B A
 // XOR_IMMEDIATE_AB
 XOR 0x1234 AB
+XOR *label AB
 // OR_ABSOLUTE_AB
 XOR &0x1234 AB
 XOR label AB
@@ -303,11 +310,13 @@ CMP &0x1234 LI
 CMP label LI
 // CMP_IMMEDIATE_AB
 CMP 0x1234 AB
+CMP *label AB
 // CMP_ABSOLUTE_AB
 CMP &0x1234 AB
 CMP label AB
 // CMP_IMMEDIATE_HLI
 CMP 0x1234 HLI
+CMP *label HLI
 // CMP_ABSOLUTE_HLI
 CMP &0x1234 HLI
 CMP label HLI
