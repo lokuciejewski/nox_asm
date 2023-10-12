@@ -1,8 +1,8 @@
 use std::io::Read;
 use std::{fs::OpenOptions, path::Path};
 
-use anyhow::{anyhow, Context};
 use anyhow::Error;
+use anyhow::{anyhow, Context};
 use instructions::add::parse_add;
 use instructions::and::parse_and;
 use instructions::call::parse_call;
@@ -11,7 +11,7 @@ use instructions::cmp::parse_cmp;
 use instructions::dec::parse_dec;
 use instructions::halt::parse_halt;
 use instructions::inc::parse_inc;
-use instructions::jump::{parse_jze, parse_jof, parse_jer, parse_jok, parse_jump};
+use instructions::jump::{parse_jer, parse_jof, parse_jok, parse_jump, parse_jze};
 use instructions::noop::parse_noop;
 use instructions::not::parse_not;
 use instructions::or::parse_or;
@@ -28,16 +28,16 @@ use instructions::xor::parse_xor;
 use instructions::zero::parse_zero;
 use opcodes::Opcode;
 
-mod opcodes;
 mod instructions;
+mod opcodes;
 
 #[derive(Debug, PartialEq, Clone)]
 enum TokenType {
     Instruction,      // any of instructions string
     Register,         // any of A, B, HI, LI, AB, HLI, EX, IRA. Also S, SA, SS for easier parsing
     Flag,             // any of ERR, IRQ, OK, OVF, ZERO
-    ImmediateValue8,   // any token starting with `#0x` and parsing into 1 byte value
-    ImmediateValue16,   // any token starting with `#0x` and parsing into 2 byte value
+    ImmediateValue8,  // any token starting with `#0x` and parsing into 1 byte value
+    ImmediateValue16, // any token starting with `#0x` and parsing into 2 byte value
     Indirection,      // `&HLI`
     Address,          // any 2 byte token starting with `&0x`
     Label,            // any text ending with ":"
@@ -48,7 +48,7 @@ enum TokenType {
 }
 
 #[derive(Debug, Clone)]
-struct Token{
+struct Token {
     _type: TokenType,
     raw: String,
     opcode: Option<Opcode>,
@@ -62,9 +62,15 @@ impl Token {
     }
 }
 
-impl Default for Token{
+impl Default for Token {
     fn default() -> Self {
-        Self { _type: TokenType::Text, raw: Default::default(), opcode: Default::default(), value: Default::default(), address: Default::default() }
+        Self {
+            _type: TokenType::Text,
+            raw: Default::default(),
+            opcode: Default::default(),
+            value: Default::default(),
+            address: Default::default(),
+        }
     }
 }
 
@@ -81,7 +87,8 @@ impl TryFrom<String> for Token {
                 })
             }
             immediate if immediate.starts_with("0X") => {
-                let parsed_val = usize::from_str_radix(&immediate[2..], 16).map_err(|e| anyhow!(e))?;
+                let parsed_val =
+                    usize::from_str_radix(&immediate[2..], 16).map_err(|e| anyhow!(e))?;
                 let token_type = if immediate.len() > 5 {
                     TokenType::ImmediateValue16
                 } else {
@@ -95,22 +102,19 @@ impl TryFrom<String> for Token {
                     ..Default::default()
                 })
             }
-            label_value if label_value.starts_with('*') => {
-                Ok(Token {
-                    _type: TokenType::ImmediateValue16,
-                    raw: value,
-                    ..Default::default()
-                })
-            }
-            indirection if indirection == "&HLI" => {
-                Ok(Token {
-                    _type: TokenType::Indirection,
-                    raw: value,
-                    ..Default::default()
-                })
-            }
-            address if address.starts_with("&") => {
-                let parsed_val = usize::from_str_radix(&address[3..], 16).map_err(|e| anyhow!(e))?;
+            label_value if label_value.starts_with('*') => Ok(Token {
+                _type: TokenType::ImmediateValue16,
+                raw: value,
+                ..Default::default()
+            }),
+            indirection if indirection == "&HLI" => Ok(Token {
+                _type: TokenType::Indirection,
+                raw: value,
+                ..Default::default()
+            }),
+            address if address.starts_with('&') => {
+                let parsed_val =
+                    usize::from_str_radix(&address[3..], 16).map_err(|e| anyhow!(e))?;
                 Ok(Token {
                     _type: TokenType::Address,
                     raw: value,
@@ -138,9 +142,9 @@ impl TryFrom<String> for Token {
                 raw: value,
                 ..Default::default()
             }),
-            "NOOP" | "PUSH" | "POP" | "PEEK" | "STO" | "ADD" | "SUB" | "SHL" | "SHR" | "AND" | "OR"
-            | "XOR" | "NOT" | "CMP" | "INC" | "DEC" | "ZERO" | "SWP" | "JZE" | "JOF" | "JER"
-            | "JOK" | "JMP" | "CALL" | "RET" | "SET" | "CLR" | "HALT" => Ok(Token {
+            "NOOP" | "PUSH" | "POP" | "PEEK" | "STO" | "ADD" | "SUB" | "SHL" | "SHR" | "AND"
+            | "OR" | "XOR" | "NOT" | "CMP" | "INC" | "DEC" | "ZERO" | "SWP" | "JZE" | "JOF"
+            | "JER" | "JOK" | "JMP" | "CALL" | "RET" | "SET" | "CLR" | "HALT" => Ok(Token {
                 _type: TokenType::Instruction,
                 raw: value,
                 ..Default::default()
@@ -176,10 +180,10 @@ impl<'a> Assembler<'a> {
         }
     }
 
-    pub fn assemble(&mut self) -> Result<Vec<u8>, Error> {
+    pub fn assemble(&mut self, verbose: bool) -> Result<Vec<u8>, Error> {
         self.load_input()?;
-        self.parse_tokens()?;
-        self.generate_bytes()
+        self.parse_tokens(verbose)?;
+        self.generate_bytes(verbose)
     }
 
     fn load_input(&mut self) -> Result<(), Error> {
@@ -192,45 +196,50 @@ impl<'a> Assembler<'a> {
         Ok(())
     }
 
-    fn parse_tokens(&mut self) -> Result<(), Error> {
+    fn parse_tokens(&mut self, verbose: bool) -> Result<(), Error> {
         // First pass - convert text to Token structs
         self.tokens = self
             .input
             .split('\n')
-            .into_iter()
             .enumerate()
             .map(|(line_n, line)| {
                 let mut comment = false;
                 line.split_ascii_whitespace()
-                    .into_iter()
                     .enumerate()
                     .map(|(word_n, word)| {
                         if !comment {
                             let token = Token::try_from(word.to_string())
-                            .map_err(|e| {
-                                anyhow!(
-                                    "Error: {} in line {} token {}: {}",
-                                    e,
-                                    line_n + 1,
-                                    word_n + 1,
-                                    word
-                                )
-                            })
-                            .unwrap();
-                        comment = token._type == TokenType::CommentStart;
-                        println!("Parsed token: {:?}", token);
-                        token
+                                .map_err(|e| {
+                                    anyhow!(
+                                        "Error: {} in line {} token {}: {}",
+                                        e,
+                                        line_n + 1,
+                                        word_n + 1,
+                                        word
+                                    )
+                                })
+                                .unwrap();
+                            comment = token._type == TokenType::CommentStart;
+                            if verbose {
+                                println!("Parsed token: {:?}", token);
+                            }
+                            token
                         } else {
-                            Token { _type: TokenType::Text, raw: word.to_owned(), opcode: None, value: None, address: None }
+                            Token {
+                                _type: TokenType::Text,
+                                raw: word.to_owned(),
+                                opcode: None,
+                                value: None,
+                                address: None,
+                            }
                         }
-                        
                     })
                     .collect()
             })
             .collect();
 
         // Second pass - assign opcodes and remove unnecessary tokens, flatten the structure
-        let mut current_mem_address: u16 = 0xffff; // to compensate for the +1 on first token
+        let mut current_mem_address: u16 = 0x0000;
         self.parsed_tokens = self
             .tokens
             .iter()
@@ -238,12 +247,14 @@ impl<'a> Assembler<'a> {
             .filter_map(|(line_n, line)| {
                 // First token on each line can only be Instruction, Label, Comment, DataStream or AddressDelimiter
                 if let Some(first_token) = line.get(0) {
-                    current_mem_address += 1;
                     match first_token._type {
-                        TokenType::Instruction => Some(Self::parse_instruction(line, &mut current_mem_address).context(anyhow!("error in line {}", line_n + 1))),
+                        TokenType::Instruction => {
+                            let parsed = Some(Self::parse_instruction(line, &mut current_mem_address).context(anyhow!("error in line {}", line_n + 1)));
+                            current_mem_address += 1;
+                            parsed
+                        }
                         TokenType::Label => {
                             let mut label = first_token.clone();
-                            current_mem_address -= 1; // compensate for label token
                             label.address = Some(current_mem_address);
                             Some(Ok(vec![label]))
                         }
@@ -262,11 +273,9 @@ impl<'a> Assembler<'a> {
                         }
                         TokenType::CommentStart => {
                             // This line is a comment, ignore it
-                            current_mem_address -= 1; // compensate for +1 on next line
                             None
                         }
                         TokenType::DataStream => {
-                            current_mem_address -= 1; // compensate for the DataStream token
                             let mut parsed_data_stream = vec![];
                             let mut started_text = false;
                             for token in line.iter().skip(1) {
@@ -290,20 +299,20 @@ impl<'a> Assembler<'a> {
                                             parsed_data_stream.push(Token {
                                                 _type: TokenType::ImmediateValue8,
                                                 raw: " ".to_string(),
-                                                value: Some(' ' as u8 as usize),
+                                                value: Some(b' ' as usize),
                                                 address: Some(current_mem_address),
                                                 opcode: None 
                                             });
                                         }
                                     },
                                     TokenType::ImmediateValue8 => {
-                                        token_clone.address = Some(current_mem_address as u16);
+                                        token_clone.address = Some(current_mem_address);
                                         token_clone._type = TokenType::ImmediateValue8;
                                         token_clone.value = token.value;
                                         parsed_data_stream.push(token_clone);
                                     },
                                     TokenType::ImmediateValue16 => {
-                                        token_clone.address = Some(current_mem_address as u16);
+                                        token_clone.address = Some(current_mem_address);
                                         token_clone._type = TokenType::ImmediateValue16;
                                         token_clone.value = token.value;
                                         parsed_data_stream.push(token_clone);
@@ -325,11 +334,12 @@ impl<'a> Assembler<'a> {
                 } else {
                     None
                 }
-            }).map(|line| {
-                println!("Parsed line: {:?}", line);
+            }).flat_map(|line| {
+                if verbose {
+                    println!("Parsed line: {:?}", line); 
+                }
                 line.unwrap()
             })
-            .flatten()
             .collect();
 
         // Third pass: assign values for `Text` or `ImmediateValue16` tokens that are labels
@@ -337,16 +347,16 @@ impl<'a> Assembler<'a> {
         for token in &mut self.parsed_tokens {
             match token._type {
                 TokenType::Text => {
-                    let mut labels = pt_clone.iter().filter(|t|t._type == TokenType::Label);
+                    let mut labels = pt_clone.iter().filter(|t| t._type == TokenType::Label);
                     let mut token_val = token.raw.clone();
                     token_val.push(':');
                     if let Some(label) = labels.find(|t| t.raw == token_val) {
-                            token._type = TokenType::Label;
-                            token.value = Some(label.address.unwrap() as usize);
+                        token._type = TokenType::Label;
+                        token.value = Some(label.address.unwrap() as usize);
                     }
-                },
+                }
                 TokenType::ImmediateValue16 => {
-                    let mut labels = pt_clone.iter().filter(|t|t._type == TokenType::Label);
+                    let mut labels = pt_clone.iter().filter(|t| t._type == TokenType::Label);
                     let mut token_val = token.raw.clone();
                     token_val.push(':');
                     if let Some(label_name) = token_val.strip_prefix('*') {
@@ -355,15 +365,17 @@ impl<'a> Assembler<'a> {
                             token.value = Some(label.address.unwrap() as usize);
                         }
                     }
-                    
-                },
-                _ => ()
-         }
+                }
+                _ => (),
+            }
         }
         Ok(())
     }
 
-    fn parse_instruction(tokenised_line: &Vec<Token>, current_mem_address: &mut u16) -> Result<Vec<Token>, Error> {
+    fn parse_instruction(
+        tokenised_line: &Vec<Token>,
+        current_mem_address: &mut u16,
+    ) -> Result<Vec<Token>, Error> {
         match tokenised_line.get(0).unwrap().formatted_raw().as_str() {
             "NOOP" => parse_noop(tokenised_line, current_mem_address),
             "PUSH" => parse_push(tokenised_line, current_mem_address),
@@ -372,8 +384,16 @@ impl<'a> Assembler<'a> {
             "STO" => parse_store(tokenised_line, current_mem_address),
             "ADD" => parse_add(tokenised_line, current_mem_address),
             "SUB" => parse_sub(tokenised_line, current_mem_address),
-            "SHL" => parse_shift(tokenised_line, current_mem_address, instructions::shift::Direction::Left),
-            "SHR" => parse_shift(tokenised_line, current_mem_address, instructions::shift::Direction::Right),
+            "SHL" => parse_shift(
+                tokenised_line,
+                current_mem_address,
+                instructions::shift::Direction::Left,
+            ),
+            "SHR" => parse_shift(
+                tokenised_line,
+                current_mem_address,
+                instructions::shift::Direction::Right,
+            ),
             "AND" => parse_and(tokenised_line, current_mem_address),
             "OR" => parse_or(tokenised_line, current_mem_address),
             "XOR" => parse_xor(tokenised_line, current_mem_address),
@@ -400,20 +420,32 @@ impl<'a> Assembler<'a> {
         }
     }
 
-    fn generate_bytes(&self) -> Result<Vec<u8>, Error> {
+    fn generate_bytes(&self, verbose: bool) -> Result<Vec<u8>, Error> {
         let mut result = vec![0; 0xffff + 1];
         for token in &self.parsed_tokens {
             let address = token.address.unwrap() as usize;
             if token.opcode.is_some() {
                 let instruction_val = token.opcode.clone().unwrap() as u8;
-                println!("Writing instruction: {:02x?} (0x{:02x})", token, instruction_val);
+                if verbose {
+                    println!(
+                        "Writing instruction: {:02x?} (0x{:02x})",
+                        token, instruction_val
+                    );
+                }
                 result[address] = instruction_val;
             } else if token.value.is_some() {
                 if token._type == TokenType::ImmediateValue8 {
-                    println!("Writing 8 bit data: {:02x?}", token);
+                    if verbose {
+                        println!("Writing 8 bit data: {:02x?}", token);
+                    }
                     result[address] = (token.value.unwrap() & 0xff) as u8;
-                } else if token._type == TokenType::ImmediateValue16 || token._type == TokenType::Label || token._type == TokenType::Address{
-                    println!("Writing 16 bit data: {:04x?}", token);
+                } else if token._type == TokenType::ImmediateValue16
+                    || token._type == TokenType::Label
+                    || token._type == TokenType::Address
+                {
+                    if verbose {
+                        println!("Writing 16 bit data: {:04x?}", token);
+                    }
                     result[address] = ((token.value.unwrap() & 0xff00) >> 8) as u8;
                     result[address + 1] = (token.value.unwrap() & 0xff) as u8;
                 }

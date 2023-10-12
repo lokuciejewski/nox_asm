@@ -2,7 +2,6 @@ use anyhow::{anyhow, Error};
 
 use crate::{opcodes::Opcode, Token, TokenType};
 
-
 pub(crate) fn parse_call(
     tokenised_line: &Vec<Token>,
     current_mem_address: &mut u16,

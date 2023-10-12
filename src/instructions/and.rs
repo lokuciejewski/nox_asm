@@ -71,7 +71,7 @@ pub(crate) fn parse_and(
                     );
                     Ok(vec![instruction])
                 }
-                _ => return Err(anyhow!("syntax error")),
+                _ => Err(anyhow!("syntax error")),
             }
         }
         _ => todo!(),

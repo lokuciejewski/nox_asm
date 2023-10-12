@@ -1,8 +1,7 @@
-use std::{path::Path, fs::OpenOptions, io::Write};
+use std::{fs::OpenOptions, io::Write, path::Path};
 
 use clap::Parser;
 use nox_asm::Assembler;
-
 
 #[derive(Parser)]
 struct Args {
@@ -12,7 +11,11 @@ struct Args {
 
     /// Output file
     #[arg(short)]
-    output_file: String
+    output_file: String,
+
+    /// Verbose
+    #[arg(short)]
+    verbose: bool,
 }
 
 fn main() {
@@ -20,15 +23,20 @@ fn main() {
 
     let input_path = Path::new(&args.input_file);
     let output_path = Path::new(&args.output_file);
+    let verbose = args.verbose;
 
     let mut assembler = Assembler::new(input_path);
 
-    let bytes = assembler.assemble().unwrap();
+    println!("> Assembling {:?}...", input_path);
+    let bytes = assembler.assemble(verbose).unwrap();
 
-    let mut file = OpenOptions::new().write(true).append(false).create(true).open(output_path).unwrap();
+    let mut file = OpenOptions::new()
+        .write(true)
+        .append(false)
+        .create(true)
+        .open(output_path)
+        .unwrap();
 
     file.write_all(&bytes).unwrap();
-
-    println!("> Assembling {:?}...", input_path);
     println!("> {:?} assembled to {:?}", input_path, output_path);
 }

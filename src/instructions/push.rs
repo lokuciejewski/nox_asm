@@ -87,7 +87,10 @@ pub(crate) fn parse_push(
                 }
                 (TokenType::Instruction, TokenType::Register, TokenType::Register) => {
                     instruction.opcode = Some(
-                        match (token_1.formatted_raw().as_str(), token_2.formatted_raw().as_str()) {
+                        match (
+                            token_1.formatted_raw().as_str(),
+                            token_2.formatted_raw().as_str(),
+                        ) {
                             ("A", "B") => Opcode::PUSH_A_B,
                             ("A", "S") => Opcode::PUSH_A_STACK,
                             ("B", "A") => Opcode::PUSH_B_A,
@@ -114,7 +117,7 @@ pub(crate) fn parse_push(
                     );
                     Ok(vec![instruction])
                 }
-                _ => return Err(anyhow!("syntax error")),
+                _ => Err(anyhow!("syntax error")),
             }
         }
         _ => todo!(),

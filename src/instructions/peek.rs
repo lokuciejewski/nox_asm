@@ -47,7 +47,7 @@ pub(crate) fn parse_peek(
                     });
                     Ok(vec![instruction])
                 }
-                _ => return Err(anyhow!("syntax error")),
+                _ => Err(anyhow!("syntax error")),
             }
         }
         _ => todo!(),

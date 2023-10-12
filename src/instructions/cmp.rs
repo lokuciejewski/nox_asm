@@ -73,7 +73,7 @@ pub(crate) fn parse_cmp(
                     *current_mem_address += 1;
                     Ok(vec![instruction, target])
                 }
-                _ => return Err(anyhow!("syntax error")),
+                _ => Err(anyhow!("syntax error")),
             }
         }
         _ => todo!(),
