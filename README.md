@@ -77,6 +77,36 @@ $ "Some text"
 
 ### Labels
 
+Declaring a label is done by using any unique text (no whitespaces) followed by ":"
+
+```asm
+i_am_a_valid_label:
+pop: // still valid
+this:is:valid:too:
+this is not a valid label:
+```
+
+To declare label at a specific address, use `>` token:
+
+```asm
+> 0x1234
+i_am_at_0x1234:
+
+JMP i_am_at_0x1234 // equal to JMP &0x1234
+
+> 0xffff
+i_am_the_last_byte:
+```
+
+Since the labels are assigned at second assembly pass, they do not need to be declared before the usage:
+
+```asm
+jmp this_is_not_yet_declared
+
+this_is_not_yet_declared:
+    POP A B
+```
+
 ### Instructions
 
 For full list of all instructions along with the cycles count and flag changes, please see [a full list of all Nox CPU opcodes](https://github.com/lokuciejewski/nox_cpu/blob/main/docs/opcodes.md)
