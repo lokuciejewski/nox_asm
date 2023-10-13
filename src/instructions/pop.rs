@@ -6,13 +6,12 @@ pub(crate) fn parse_pop(
     tokenised_line: &Vec<Token>,
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
-    let mut tokens = tokenised_line
-        .get(0..=2)
-        .ok_or_else(|| anyhow!("too few tokens in line for PUSH"))?
-        .to_owned();
-
-    match tokens.as_mut_slice() {
-        [instruction, token_1, token_2] => {
+    match (
+        tokenised_line.get(0),
+        tokenised_line.get(1),
+        tokenised_line.get(2),
+    ) {
+        (Some(instruction), Some(token_1), Some(token_2)) => {
             let mut instruction = instruction.clone();
             instruction.address = Some(*current_mem_address);
             match (&instruction._type, &token_1._type, &token_2._type) {
@@ -55,16 +54,20 @@ pub(crate) fn parse_pop(
                         ) {
                             ("A", "HI") => Opcode::POP_A_HI,
                             ("A", "LI") => Opcode::POP_A_LI,
-                            ("A", "S") => Opcode::POP_STACK_A,
                             ("B", "HI") => Opcode::POP_B_HI,
                             ("B", "LI") => Opcode::POP_B_LI,
-                            ("B", "S") => Opcode::POP_STACK_B,
-                            ("HI", "S") => Opcode::POP_STACK_HI,
-                            ("LI", "S") => Opcode::POP_STACK_LI,
+                            ("A", "B") => Opcode::POP_A_B,
+                            ("B", "A") => Opcode::POP_B_A,
                             ("AB", "SA") => Opcode::POP_STACK_ADDRESS_AB,
                             ("AB", "SS") => Opcode::POP_STACK_SIZE_AB,
                             ("AB", "IRA") => Opcode::POP_AB_IRQ,
                             ("AB", "HLI") => Opcode::POP_AB_HLI,
+                            ("A", "S") => Opcode::POP_A_STACK,
+                            ("B", "S") => Opcode::POP_B_STACK,
+                            ("S", "A") => Opcode::POP_STACK_A,
+                            ("S", "B") => Opcode::POP_STACK_B,
+                            ("S", "HI") => Opcode::POP_STACK_HI,
+                            ("S", "LI") => Opcode::POP_STACK_LI,
                             _ => {
                                 return Err(anyhow!(
                                     "incorrect register sequence for POP: {} {}",
@@ -74,11 +77,61 @@ pub(crate) fn parse_pop(
                             }
                         },
                     );
+                    match instruction.opcode.as_ref().unwrap() {
+                        Opcode::POP_STACK_A
+                        | Opcode::POP_STACK_B
+                        | Opcode::POP_A_STACK
+                        | Opcode::POP_B_STACK => {
+                            if let Some(token_3) = tokenised_line.get(3) {
+                                if token_3._type == TokenType::ImmediateValue8 {
+                                    let mut target = token_3.clone();
+                                    *current_mem_address += 1;
+                                    target.address = Some(*current_mem_address);
+                                    Ok(vec![instruction, target])
+                                } else {
+                                    return Err(anyhow!(
+                                        "POP {} {} needs an immediate value",
+                                        token_1.raw,
+                                        token_2.raw
+                                    ));
+                                }
+                            } else {
+                                return Err(anyhow!(
+                                    "POP {} {} needs an immediate value",
+                                    token_1.raw,
+                                    token_2.raw
+                                ));
+                            }
+                        }
+                        _ => Ok(vec![instruction]),
+                    }
+                }
+                (TokenType::Instruction, TokenType::Register, TokenType::CommentStart) => {
+                    instruction.opcode = Some(match token_1.formatted_raw().as_str() {
+                        "A" => Opcode::POP_A,
+                        "B" => Opcode::POP_B,
+                        _ => return Err(anyhow!("one argument POP can only be used with A or B")),
+                    });
                     Ok(vec![instruction])
                 }
                 _ => Err(anyhow!("syntax error")),
             }
         }
-        _ => todo!(),
+        (Some(instruction), Some(token_1), None) => {
+            let mut instruction = instruction.clone();
+            instruction.address = Some(*current_mem_address);
+            match (&instruction._type, &token_1._type) {
+                (TokenType::Instruction, TokenType::Register) => {
+                    instruction.opcode = Some(match token_1.formatted_raw().as_str() {
+                        "A" => Opcode::POP_A,
+                        "B" => Opcode::POP_B,
+                        _ => return Err(anyhow!("one argument POP can only be used with A or B")),
+                    });
+                    Ok(vec![instruction])
+                }
+                _ => Err(anyhow!("syntax error")),
+            }
+        }
+        _ => Err(anyhow!("line parsing error")),
     }
 }

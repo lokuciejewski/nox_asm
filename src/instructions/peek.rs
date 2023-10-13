@@ -50,6 +50,6 @@ pub(crate) fn parse_peek(
                 _ => Err(anyhow!("syntax error")),
             }
         }
-        _ => todo!(),
+        _ => Err(anyhow!("syntax error")),
     }
 }

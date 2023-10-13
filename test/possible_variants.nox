@@ -88,9 +88,9 @@ PUSH SA AB
 // PUSH_STACK_SIZE_AB     // Push `stack_size` to AB, set ZERO flag accordingly
 PUSH SS AB
 // PUSH_A_STACK           // push value(s) from A to stack IMMEDIATE value times
-PUSH A S
+PUSH A S 0x01
 // PUSH_B_STACK           // push value(s) from B to stack IMMEDIATE value times
-PUSH B S
+PUSH B S 0x01
 // PUSH_HI_STACK          // push HI to stack
 PUSH HI S
 // PUSH_LI_STACK          // push LI to stack
@@ -103,7 +103,14 @@ PUSH &HLI B
 PUSH &HLI AB 
 
 
-
+// POP_A, // Pop last value from A
+POP A
+// POP_B, // Pop last value from B
+POP B
+// POP_A_B,
+POP A B
+// POP_B_A,
+POP B A
 // POP_A_ABSOLUTE  
 POP A &0x1234
 POP A label
@@ -124,14 +131,18 @@ POP AB SA
 POP AB SS
 // POP_AB_IRQ
 POP AB IRA  // InteRrupt Address
-// POP_A_STACK            // pop value(s) from stack to A IMMEDIATE value times
-POP A S
-// POP_B_STACK            // pop value(s) from stack to B IMMEDIATE value times
-POP B S
-// POP_HI_STACK           // pop HI from stack
-POP HI S
-// POP_LI_STACK           // pop LI from stack
-POP LI S
+// POP_STACK_A            // pop value(s) from stack to A IMMEDIATE value times
+POP S A 0x01
+// POP_STACK_B            // pop value(s) from stack to B IMMEDIATE value times
+POP S B 0x01
+// POP_STACK_HI           // pop HI from stack
+POP S HI
+// POP_STACK_LI           // pop LI from stack
+POP S LI
+// POP_A_STACK
+POP A STACK 0x01
+// POP_B_STACK
+POP B STACK 0x01
 // POP_AB_ABSOLUTE
 POP AB &0x1234
 POP AB label

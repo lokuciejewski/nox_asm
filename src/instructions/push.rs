@@ -115,7 +115,29 @@ pub(crate) fn parse_push(
                             }
                         },
                     );
-                    Ok(vec![instruction])
+                    match instruction.opcode.as_ref().unwrap() {
+                        Opcode::PUSH_A_STACK | Opcode::PUSH_B_STACK => {
+                            if let Some(token_3) = tokenised_line.get(3) {
+                                if token_3._type == TokenType::ImmediateValue8 {
+                                    let mut target = token_3.clone();
+                                    *current_mem_address += 1;
+                                    target.address = Some(*current_mem_address);
+                                    Ok(vec![instruction, target])
+                                } else {
+                                    return Err(anyhow!(
+                                        "PUSH {} S needs an immediate value",
+                                        token_1.raw
+                                    ));
+                                }
+                            } else {
+                                return Err(anyhow!(
+                                    "PUSH {} S needs an immediate value",
+                                    token_1.raw
+                                ));
+                            }
+                        }
+                        _ => Ok(vec![instruction]),
+                    }
                 }
                 _ => Err(anyhow!("syntax error")),
             }

@@ -26,10 +26,14 @@ pub(crate) enum Opcode
     PUSH_EXIT_CODE_A, // push EXIT_CODE to A
     PUSH_EXIT_CODE_B,
 
+    POP_A, // Pop last value from A
+    POP_B, // Pop last value from B
     POP_A_ABSOLUTE,
     POP_B_ABSOLUTE,
     POP_A_INDIRECT, // Pop value from A into address in HLI
     POP_B_INDIRECT, // Pop value from B into address in HLI
+    POP_A_B,
+    POP_B_A,
     POP_A_HI,
     POP_A_LI,
     POP_B_HI,
@@ -167,8 +171,10 @@ pub(crate) enum Opcode
     POP_STACK_SIZE_AB, // Pop value from AB to `stack_size`. Can be used to increase stack size on the fly, as it does not reset the stack.
     POP_AB_IRQ,
     PUSH_A_STACK,  // push value(s) from A to stack IMMEDIATE value times
+    POP_A_STACK,   // pop value(s) from A to stack IMMEDIATE value times
     POP_STACK_A,   // pop value(s) from stack to A IMMEDIATE value times
     PUSH_B_STACK,  // push value(s) from B to stack IMMEDIATE value times
+    POP_B_STACK,   // pop value(s) from B to stack IMMEDIATE value times
     POP_STACK_B,   // pop value(s) from stack to B IMMEDIATE value times
     PUSH_HI_STACK, // push HI to stack
     POP_STACK_HI,  // pop HI from stack
