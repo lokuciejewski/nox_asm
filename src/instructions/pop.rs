@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use crate::{opcodes::Opcode, Token, TokenType};
 
 pub(crate) fn parse_pop(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     match (
@@ -89,18 +89,18 @@ pub(crate) fn parse_pop(
                                     target.address = Some(*current_mem_address);
                                     Ok(vec![instruction, target])
                                 } else {
-                                    return Err(anyhow!(
+                                    Err(anyhow!(
                                         "POP {} {} needs an immediate value",
                                         token_1.raw,
                                         token_2.raw
-                                    ));
+                                    ))
                                 }
                             } else {
-                                return Err(anyhow!(
+                                Err(anyhow!(
                                     "POP {} {} needs an immediate value",
                                     token_1.raw,
                                     token_2.raw
-                                ));
+                                ))
                             }
                         }
                         _ => Ok(vec![instruction]),

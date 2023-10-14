@@ -1,4 +1,5 @@
 #[derive(Debug, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 #[allow(non_camel_case_types)]
 #[allow(unused)]
 /// @brief All opcodes follow the convention: OPERATION SOURCE TARGET

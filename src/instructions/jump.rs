@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use crate::{opcodes::Opcode, Token, TokenType};
 
 pub(crate) fn parse_jze(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     let mut instruction = tokenised_line.get(0).unwrap().clone();
@@ -31,7 +31,7 @@ pub(crate) fn parse_jze(
 }
 
 pub(crate) fn parse_jof(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     let mut instruction = tokenised_line.get(0).unwrap().clone();
@@ -59,7 +59,7 @@ pub(crate) fn parse_jof(
 }
 
 pub(crate) fn parse_jer(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     let mut instruction = tokenised_line.get(0).unwrap().clone();
@@ -87,7 +87,7 @@ pub(crate) fn parse_jer(
 }
 
 pub(crate) fn parse_jok(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     let mut instruction = tokenised_line.get(0).unwrap().clone();
@@ -115,7 +115,7 @@ pub(crate) fn parse_jok(
 }
 
 pub(crate) fn parse_jump(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     let mut instruction = tokenised_line.get(0).unwrap().clone();

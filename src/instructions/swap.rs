@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use crate::{opcodes::Opcode, Token, TokenType};
 
 pub(crate) fn parse_swap(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     // ADD <REG> <REG> | ADD <REG> #<8BIT> | ADD <REG> <16BIT>

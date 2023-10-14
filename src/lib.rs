@@ -269,7 +269,6 @@ impl<'a> Assembler<'a> {
                                     line_n + 1,
                                 )))
                             }
-                            
                         }
                         TokenType::CommentStart => {
                             // This line is a comment, ignore it
@@ -279,7 +278,7 @@ impl<'a> Assembler<'a> {
                             let mut parsed_data_stream = vec![];
                             let mut started_text = false;
                             for token in line.iter().skip(1) {
-                                let mut token_clone = token.clone();  
+                                let mut token_clone = token.clone();
                                 match token._type {
                                     TokenType::Text => {
                                         started_text = token_clone.raw.starts_with('\"') & !started_text & !token_clone.raw.ends_with('\"');
@@ -301,7 +300,7 @@ impl<'a> Assembler<'a> {
                                                 raw: " ".to_string(),
                                                 value: Some(b' ' as usize),
                                                 address: Some(current_mem_address),
-                                                opcode: None 
+                                                opcode: None
                                             });
                                         }
                                     },
@@ -373,7 +372,7 @@ impl<'a> Assembler<'a> {
     }
 
     fn parse_instruction(
-        tokenised_line: &Vec<Token>,
+        tokenised_line: &[Token],
         current_mem_address: &mut u16,
     ) -> Result<Vec<Token>, Error> {
         match tokenised_line.get(0).unwrap().formatted_raw().as_str() {

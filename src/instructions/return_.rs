@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use crate::{opcodes::Opcode, Token, TokenType};
 
 pub(crate) fn parse_return(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     let mut instruction = tokenised_line.get(0).unwrap().clone();

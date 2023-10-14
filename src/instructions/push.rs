@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use crate::{opcodes::Opcode, Token, TokenType};
 
 pub(crate) fn parse_push(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
 ) -> Result<Vec<Token>, Error> {
     let mut tokens = tokenised_line
@@ -124,16 +124,10 @@ pub(crate) fn parse_push(
                                     target.address = Some(*current_mem_address);
                                     Ok(vec![instruction, target])
                                 } else {
-                                    return Err(anyhow!(
-                                        "PUSH {} S needs an immediate value",
-                                        token_1.raw
-                                    ));
+                                    Err(anyhow!("PUSH {} S needs an immediate value", token_1.raw))
                                 }
                             } else {
-                                return Err(anyhow!(
-                                    "PUSH {} S needs an immediate value",
-                                    token_1.raw
-                                ));
+                                Err(anyhow!("PUSH {} S needs an immediate value", token_1.raw))
                             }
                         }
                         _ => Ok(vec![instruction]),

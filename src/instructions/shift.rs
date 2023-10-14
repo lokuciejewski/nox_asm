@@ -9,7 +9,7 @@ pub(crate) enum Direction {
 }
 
 pub(crate) fn parse_shift(
-    tokenised_line: &Vec<Token>,
+    tokenised_line: &[Token],
     current_mem_address: &mut u16,
     shift_direction: Direction,
 ) -> Result<Vec<Token>, Error> {
