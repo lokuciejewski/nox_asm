@@ -294,9 +294,22 @@ impl<'a> Assembler<'a> {
                             for token in line.iter().skip(1) {
                                 let mut token_clone = token.clone();
                                 match token._type {
-                                    TokenType::Text | TokenType::Label => {
+                                    
+                                    TokenType::ImmediateValue8 => {
+                                        token_clone.address = Some(current_mem_address);
+                                        token_clone._type = TokenType::ImmediateValue8;
+                                        token_clone.value = token.value;
+                                        parsed_data_stream.push(token_clone);
+                                    },
+                                    TokenType::ImmediateValue16 => {
+                                        token_clone.address = Some(current_mem_address);
+                                        token_clone._type = TokenType::ImmediateValue16;
+                                        token_clone.value = token.value;
+                                        parsed_data_stream.push(token_clone);
+                                    },
+                                    _ => {  // Any other token is just written as raw.bytes()
                                         let add_space = token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"') ||
-                                            !token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"');
+                                            !token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"') || token_clone.raw == "\"";
                                         token_clone.raw = token.raw.replace('\"', "");
                                         for char in token_clone.raw.chars() {
                                             let char_token = Token {
@@ -319,21 +332,6 @@ impl<'a> Assembler<'a> {
                                             });
                                         }
                                     },
-                                    TokenType::ImmediateValue8 => {
-                                        token_clone.address = Some(current_mem_address);
-                                        token_clone._type = TokenType::ImmediateValue8;
-                                        token_clone.value = token.value;
-                                        parsed_data_stream.push(token_clone);
-                                    },
-                                    TokenType::ImmediateValue16 => {
-                                        token_clone.address = Some(current_mem_address);
-                                        token_clone._type = TokenType::ImmediateValue16;
-                                        token_clone.value = token.value;
-                                        parsed_data_stream.push(token_clone);
-                                    },
-                                    _ => {
-                                        return Some(Err(anyhow!("Syntax error in line {} - invalid token after $: {}", line_n + 1, token.raw)))
-                                    }
                                 }
                                 current_mem_address += 1;
                             }
