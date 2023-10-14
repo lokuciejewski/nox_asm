@@ -36,15 +36,15 @@ enum TokenType {
     Instruction,      // any of instructions string
     Register,         // any of A, B, HI, LI, AB, HLI, EX, IRA. Also S, SA, SS for easier parsing
     Flag,             // any of ERR, IRQ, OK, OVF, ZERO
-    ImmediateValue8,  // any token starting with `#0x` and parsing into 1 byte value
-    ImmediateValue16, // any token starting with `#0x` and parsing into 2 byte value
-    Indirection,      // `&HLI`
-    Address,          // any 2 byte token starting with `&0x`
-    Label,            // any text ending with ":"
-    Text,             // any token that does not match the rest
+    ImmediateValue8, // any token starting with `0x` and parsing into 1 byte value or any ASCII char in ''
+    ImmediateValue16, // any token starting with `0x` and parsing into 2 byte value
+    Indirection,     // `&HLI`
+    Address,         // any 2 byte token starting with `&0x`
+    Label,           // any text ending with ":"
+    Text,            // any token that does not match the rest
     AddressDelimiter, // `>`
-    CommentStart,     // `//`
-    DataStream,       // `$`
+    CommentStart,    // `//`
+    DataStream,      // `$`
 }
 
 #[derive(Debug, Clone)]
@@ -154,6 +154,14 @@ impl TryFrom<String> for Token {
                 raw: value,
                 ..Default::default()
             }),
+            char if char.starts_with('\'') && char.ends_with('\'') && char.len() == 3 => {
+                Ok(Token {
+                    _type: TokenType::ImmediateValue8,
+                    raw: value,
+                    value: Some(char.bytes().nth(1).unwrap() as usize),
+                    ..Default::default()
+                })
+            }
             _ => Ok(Token {
                 _type: TokenType::Text,
                 raw: value,
@@ -280,7 +288,7 @@ impl<'a> Assembler<'a> {
                                 let mut token_clone = token.clone();
                                 match token._type {
                                     TokenType::Text | TokenType::Label => {
-                                        let add_space = token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"') || 
+                                        let add_space = token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"') ||
                                             !token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"');
                                         token_clone.raw = token.raw.replace('\"', "");
                                         for char in token_clone.raw.chars() {
