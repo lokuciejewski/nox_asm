@@ -162,6 +162,12 @@ impl TryFrom<String> for Token {
                     ..Default::default()
                 })
             }
+            space if space == "''" => Ok(Token {
+                _type: TokenType::ImmediateValue8,
+                raw: value,
+                value: Some(' ' as u8 as usize),
+                ..Default::default()
+            }),
             _ => Ok(Token {
                 _type: TokenType::Text,
                 raw: value,
@@ -212,7 +218,8 @@ impl<'a> Assembler<'a> {
             .enumerate()
             .map(|(line_n, line)| {
                 let mut comment = false;
-                line.split_ascii_whitespace()
+                line.replace("' '", "''")
+                    .split_whitespace()
                     .enumerate()
                     .map(|(word_n, word)| {
                         if !comment {

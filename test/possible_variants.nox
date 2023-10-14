@@ -35,7 +35,7 @@ NOOP
 
 // PUSH_IMMEDIATE_A  
 PUSH 0xff A
-PUSH 'a' A
+PUSH ' ' A
 // PUSH_ABSOLUTE_A  
 PUSH &0x1234 A  
 PUSH label A 
