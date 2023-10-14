@@ -276,12 +276,12 @@ impl<'a> Assembler<'a> {
                         }
                         TokenType::DataStream => {
                             let mut parsed_data_stream = vec![];
-                            let mut started_text = false;
                             for token in line.iter().skip(1) {
                                 let mut token_clone = token.clone();
                                 match token._type {
-                                    TokenType::Text => {
-                                        started_text = token_clone.raw.starts_with('\"') & !started_text & !token_clone.raw.ends_with('\"');
+                                    TokenType::Text | TokenType::Label => {
+                                        let add_space = token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"') || 
+                                            !token_clone.raw.starts_with('\"') && !token_clone.raw.ends_with('\"');
                                         token_clone.raw = token.raw.replace('\"', "");
                                         for char in token_clone.raw.chars() {
                                             let char_token = Token {
@@ -294,7 +294,7 @@ impl<'a> Assembler<'a> {
                                             current_mem_address += 1;
                                             parsed_data_stream.push(char_token);
                                         }
-                                        if started_text {
+                                        if add_space {
                                             parsed_data_stream.push(Token {
                                                 _type: TokenType::ImmediateValue8,
                                                 raw: " ".to_string(),
