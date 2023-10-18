@@ -158,14 +158,14 @@ impl TryFrom<String> for Token {
                 Ok(Token {
                     _type: TokenType::ImmediateValue8,
                     raw: value,
-                    value: Some(char.bytes().nth(1).unwrap() as usize),
+                    value: Some(char.as_bytes()[1] as usize),
                     ..Default::default()
                 })
             }
             space if space == "''" => Ok(Token {
                 _type: TokenType::ImmediateValue8,
                 raw: value,
-                value: Some(' ' as u8 as usize),
+                value: Some(b' ' as usize),
                 ..Default::default()
             }),
             _ => Ok(Token {
